@@ -1,8 +1,6 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Players;
-using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
-using RefinedGem.Content;
 using RefinedGem.Services;
 
 namespace RefinedGem.Patches;
@@ -11,11 +9,6 @@ namespace RefinedGem.Patches;
 internal static class CardCreationOptionsForRoomPatch
 {
     [HarmonyPostfix]
-    private static void Postfix(Player player, ref CardCreationOptions __result)
-    {
-        if (!RefinedPoolService.ShouldUseRefinedPool(player))
-            return;
-
-        __result = __result.WithCardPools([ModelDb.CardPool<RefinedCardPool>()]);
-    }
+    private static void Postfix(Player player, ref CardCreationOptions __result) =>
+        __result = RefinedPoolService.ApplyCardCreationOptions(player, __result);
 }

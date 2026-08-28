@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Runs;
 using RefinedGem.Content;
 using RefinedGem.Data;
 using STS2RitsuLib;
@@ -11,12 +12,53 @@ namespace RefinedGem.Services;
 
 public static class RefinedPoolService
 {
+    public const int MinimumRewardCards = 3;
+
     private static ModDataStore Store => RitsuLibFramework.GetDataStore(RefinedGemEntry.ModId);
 
     public static bool ShouldUseRefinedPool(Player player) =>
         player.GetRelic<RefinedGemRelic>() is not null && GetActiveCardCount() > 0;
 
     public static int GetActiveCardCount() => GetProfile().CardIds.Count;
+
+    public static CardCreationOptions ApplyCardCreationOptions(Player player, CardCreationOptions options)
+    {
+        if (!ShouldUseRefinedPool(player))
+            return options;
+
+        var eligibleCards = GetCardsForRun(player).ToList();
+        if (eligibleCards.Count < MinimumRewardCards)
+            return options;
+
+        var allowed = eligibleCards
+            .Select(card => card.CanonicalInstance)
+            .ToHashSet();
+
+        return options
+            .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
+            .WithFilter(card => allowed.Contains(card.CanonicalInstance))
+            .WithRarityOdds(CardRarityOddsType.Uniform);
+    }
+
+    public static IEnumerable<CardModel> GetMerchantCardsForRun(Player player, IEnumerable<CardModel> vanillaCards)
+    {
+        var vanillaList = vanillaCards.ToList();
+
+        if (!ShouldUseRefinedPool(player))
+            return vanillaList;
+
+        var eligible = GetCardsForRun(player).ToList();
+        if (eligible.Count < MinimumRewardCards)
+            return vanillaList;
+
+        if (IsColorlessMerchantPool(vanillaList))
+            return vanillaList;
+
+        if (!HasMerchantTypeCoverage(eligible))
+            return vanillaList;
+
+        return eligible;
+    }
 
     public static bool ContainsCard(CardModel card) =>
         GetProfile().CardIds.Contains(GetStableCardId(card));
@@ -50,11 +92,29 @@ public static class RefinedPoolService
 
     public static IEnumerable<CardModel> GetCardsForRun(Player player)
     {
-        var unlockState = player.UnlockState;
         var constraint = player.RunState.CardMultiplayerConstraint;
-        return ModelDb.CardPool<RefinedCardPool>()
-            .GetUnlockedCards(unlockState, constraint);
+        return GetCanonicalCardsForProfile()
+            .Where(card => IsEligibleForRun(card, constraint));
     }
+
+    private static bool IsColorlessMerchantPool(IReadOnlyList<CardModel> cards) =>
+        cards.Count > 0 && cards.All(card => card.Pool.IsColorless);
+
+    private static bool HasMerchantTypeCoverage(IReadOnlyList<CardModel> cards) =>
+        cards.Any(card => card.Type == CardType.Attack)
+        && cards.Any(card => card.Type == CardType.Skill)
+        && cards.Any(card => card.Type == CardType.Power);
+
+    private static bool IsEligibleForRun(CardModel card, CardMultiplayerConstraint runConstraint) =>
+        card.MultiplayerConstraint switch
+        {
+            CardMultiplayerConstraint.None => true,
+            CardMultiplayerConstraint.MultiplayerOnly =>
+                runConstraint is CardMultiplayerConstraint.None or CardMultiplayerConstraint.MultiplayerOnly,
+            CardMultiplayerConstraint.SingleplayerOnly =>
+                runConstraint is CardMultiplayerConstraint.None or CardMultiplayerConstraint.SingleplayerOnly,
+            _ => true,
+        };
 
     public static void InvalidatePoolCache() => RefinedCardPool.InvalidateCachedCards();
 

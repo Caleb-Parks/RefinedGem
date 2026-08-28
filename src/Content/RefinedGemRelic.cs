@@ -21,27 +21,11 @@ public sealed class RefinedGemRelic : ModRelicTemplate
         RefinedGemRuntime.SettingsCache.Value.AddToNeowPool;
 
     public override CardCreationOptions ModifyCardRewardCreationOptions(Player player, CardCreationOptions options) =>
-        ApplyRefinedPool(player, options);
+        RefinedPoolService.ApplyCardCreationOptions(player, options);
 
     public override CardCreationOptions ModifyCardRewardCreationOptionsLate(Player player, CardCreationOptions options) =>
-        ApplyRefinedPool(player, options);
+        RefinedPoolService.ApplyCardCreationOptions(player, options);
 
-    public override IEnumerable<CardModel> ModifyMerchantCardPool(Player player, IEnumerable<CardModel> cards)
-    {
-        if (!RefinedPoolService.ShouldUseRefinedPool(player))
-            return cards;
-
-        var allowed = RefinedPoolService.GetCardsForRun(player)
-            .Select(card => card.CanonicalInstance)
-            .ToHashSet();
-        return cards.Where(card => allowed.Contains(card.CanonicalInstance));
-    }
-
-    private static CardCreationOptions ApplyRefinedPool(Player player, CardCreationOptions options)
-    {
-        if (!RefinedPoolService.ShouldUseRefinedPool(player))
-            return options;
-
-        return options.WithCardPools([ModelDb.CardPool<RefinedCardPool>()]);
-    }
+    public override IEnumerable<CardModel> ModifyMerchantCardPool(Player player, IEnumerable<CardModel> cards) =>
+        RefinedPoolService.GetMerchantCardsForRun(player, cards);
 }

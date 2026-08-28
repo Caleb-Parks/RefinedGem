@@ -5,15 +5,14 @@ var resolver = new PathAssemblyResolver(Directory.GetFiles(sts2Dir, "*.dll"));
 using var mlc = new MetadataLoadContext(resolver);
 var asm = mlc.LoadFromAssemblyPath(Path.Combine(sts2Dir, "sts2.dll"));
 
-var lib = asm.GetType("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibrary")!;
-foreach (var name in new[] { "UpdateCardPoolFilter", "UpdateFilter", "DisplayCards", "DisplayCardsAfterShortDelay" })
-{
-    var m = lib.GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
-    Console.WriteLine($"=== {name} ===");
-    foreach (var p in m.GetParameters())
-        Console.WriteLine($"  {p.ParameterType.Name} {p.Name}");
-}
+var card = asm.GetType("MegaCrit.Sts2.Core.Models.CardModel")!;
+foreach (var p in card.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+    if (p.Name.Contains("Pool", StringComparison.OrdinalIgnoreCase)
+        || p.Name.Contains("Colorless", StringComparison.OrdinalIgnoreCase)
+        || p.Name.Contains("Character", StringComparison.OrdinalIgnoreCase))
+        Console.WriteLine($"CARD {p.PropertyType.Name} {p.Name}");
 
-var filter = asm.GetType("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardPoolFilter")!;
-foreach (var p in filter.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-    Console.WriteLine($"FILTER PROP {p.PropertyType.Name} {p.Name}");
+var pool = asm.GetType("MegaCrit.Sts2.Core.Models.CardPoolModel")!;
+foreach (var p in pool.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+    if (p.Name.Contains("Colorless", StringComparison.OrdinalIgnoreCase) || p.Name == "Title")
+        Console.WriteLine($"POOL {p.PropertyType.Name} {p.Name}");

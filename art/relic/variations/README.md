@@ -21,5 +21,5 @@ To swap the production icon, run:
 
 ```powershell
 python tools/finalize_relic_icon.py art/relic/variations/refined_gem_vNN_*.png
-powershell -ExecutionPolicy Bypass -File .\build.ps1 -NoDeploy
+powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```

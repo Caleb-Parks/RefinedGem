@@ -4,9 +4,7 @@ param(
 
     [string] $Root = "D:\citrus_dev\repos\personal\RefinedGem",
 
-    [string] $GameDir = "D:\citrus_steam_games\steamapps\common\Slay the Spire 2",
-
-    [switch] $NoDeploy
+    [string] $GameDir = "D:\citrus_steam_games\steamapps\common\Slay the Spire 2"
 
 )
 
@@ -70,6 +68,8 @@ Copy-Item (Join-Path $Root 'mod_manifest.json') (Join-Path $dist 'RefinedGem.jso
 
 Copy-Item (Join-Path $Root 'locales\eng.json') (Join-Path $dist 'locales\eng.json') -Force
 
+Copy-Item (Join-Path $Root 'refined_pool.json') (Join-Path $dist 'refined_pool.json') -Force
+
 Copy-Item (Join-Path $Root 'assets\*') (Join-Path $dist 'assets') -Force -ErrorAction SilentlyContinue
 
 
@@ -88,25 +88,33 @@ if (-not (Test-Path (Join-Path $dist 'RefinedGem.pck'))) {
 
 
 
-if (-not $NoDeploy) {
+$modsDir = Join-Path $GameDir 'mods\RefinedGem'
 
-    $modsDir = Join-Path $GameDir 'mods\RefinedGem'
+New-Item -ItemType Directory -Force -Path $modsDir | Out-Null
 
-    New-Item -ItemType Directory -Force -Path $modsDir | Out-Null
+try {
+    Get-ChildItem -Path $dist | ForEach-Object {
+        if ($_.Name -eq 'refined_pool.json') {
+            return
+        }
 
-    try {
-        Copy-Item (Join-Path $dist '*') $modsDir -Recurse -Force
-        $staleManifest = Join-Path $modsDir 'mod_manifest.json'
-        if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
-        Write-Host "[build] Deployed to $modsDir"
-
+        Copy-Item $_.FullName (Join-Path $modsDir $_.Name) -Recurse -Force
     }
 
-    catch {
-
-        Write-Warning "[build] Deploy failed (close the game if RefinedGem.dll is in use): $_"
-
+    $deployedPool = Join-Path $modsDir 'refined_pool.json'
+    if (-not (Test-Path $deployedPool)) {
+        Copy-Item (Join-Path $dist 'refined_pool.json') $deployedPool
     }
+
+    $staleManifest = Join-Path $modsDir 'mod_manifest.json'
+    if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
+    Write-Host "[build] Deployed to $modsDir"
+
+}
+
+catch {
+
+    Write-Warning "[build] Deploy failed (close the game if RefinedGem.dll is in use): $_"
 
 }
 

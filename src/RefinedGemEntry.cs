@@ -30,8 +30,6 @@ public static class RefinedGemEntry
             resourceFolders: ["locales"],
             resourceAssembly: assembly);
 
-        RefinedGemRuntime.RegisterDataStores();
-
         RitsuLibFramework.CreateContentPack(ModId)
             .CardLibraryCompendiumSharedPoolFilter<RefinedCardPool>(
                 "refined_pool",

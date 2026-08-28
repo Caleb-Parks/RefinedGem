@@ -4,10 +4,6 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using RefinedGem.Content;
-using RefinedGem.Data;
-using STS2RitsuLib;
-using STS2RitsuLib.Data;
-using STS2RitsuLib.Utils.Persistence;
 
 namespace RefinedGem.Services;
 
@@ -17,12 +13,10 @@ public static class RefinedPoolService
 
     private static readonly ConditionalWeakTable<Player, HashSet<string>> MerchantExcludedCardIds = new();
 
-    private static ModDataStore Store => RitsuLibFramework.GetDataStore(RefinedGemEntry.ModId);
-
     public static bool ShouldUseRefinedPool(Player player) =>
         player.GetRelic<RefinedGemRelic>() is not null && GetActiveCardCount() > 0;
 
-    public static int GetActiveCardCount() => GetProfile().CardIds.Count;
+    public static int GetActiveCardCount() => GetCanonicalCardsForProfile().Count;
 
     public static CardCreationOptions ApplyCardCreationOptions(Player player, CardCreationOptions options)
     {
@@ -96,19 +90,11 @@ public static class RefinedPoolService
     }
 
     public static bool ContainsCard(CardModel card) =>
-        GetProfile().CardIds.Contains(GetStableCardId(card));
+        RefinedPoolFileStore.Contains(GetStableCardId(card));
 
     public static bool ToggleCard(CardModel card)
     {
-        var id = GetStableCardId(card);
-
-        Store.Modify<RefinedPoolProfile>("refined_pool", profile =>
-        {
-            if (!profile.CardIds.Remove(id))
-                profile.CardIds.Add(id);
-        });
-
-        Store.Save("refined_pool");
+        RefinedPoolFileStore.ToggleCardId(GetStableCardId(card));
         InvalidatePoolCache();
         return true;
     }
@@ -117,7 +103,7 @@ public static class RefinedPoolService
     {
         var cards = new List<CardModel>();
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var id in GetProfile().CardIds)
+        foreach (var id in RefinedPoolFileStore.GetCardIds())
         {
             if (!seenIds.Add(id))
                 continue;
@@ -159,9 +145,6 @@ public static class RefinedPoolService
         };
 
     public static void InvalidatePoolCache() => RefinedCardPool.InvalidateCachedCards();
-
-    private static RefinedPoolProfile GetProfile() =>
-        Store.Get<RefinedPoolProfile>("refined_pool");
 
     private static string GetStableCardId(CardModel card) =>
         card.CanonicalInstance.Id.Entry;

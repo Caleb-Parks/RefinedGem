@@ -35,7 +35,7 @@ public static class RefinedGemEntry
         RitsuLibFramework.CreateContentPack(ModId)
             .CardLibraryCompendiumSharedPoolFilter<RefinedCardPool>(
                 "refined_pool",
-                "res://assets/refined_pool_filter_icon.png",
+                "res://assets/refined_gem_relic.png",
                 [
                     new CardLibraryCompendiumPlacementRule
                     {

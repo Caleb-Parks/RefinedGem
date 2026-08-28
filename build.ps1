@@ -44,8 +44,6 @@ Ensure-Asset (Join-Path $assetDir 'refined_gem_relic.png') $png
 
 Ensure-Asset (Join-Path $assetDir 'refined_gem_relic_outline.png') $png
 
-Ensure-Asset (Join-Path $assetDir 'refined_pool_filter_icon.png') $png
-
 
 
 Write-Host "[build] Compiling RefinedGem.dll ..."

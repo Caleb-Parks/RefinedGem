@@ -1,18 +1,11 @@
-using System.Reflection;
+﻿using ICSharpCode.Decompiler;
+using ICSharpCode.Decompiler.CSharp;
+using ICSharpCode.Decompiler.TypeSystem;
 
-var sts2Dir = @"D:\citrus_steam_games\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64";
-var resolver = new PathAssemblyResolver(Directory.GetFiles(sts2Dir, "*.dll"));
-using var mlc = new MetadataLoadContext(resolver);
-var asm = mlc.LoadFromAssemblyPath(Path.Combine(sts2Dir, "sts2.dll"));
-
-var card = asm.GetType("MegaCrit.Sts2.Core.Models.CardModel")!;
-foreach (var p in card.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-    if (p.Name.Contains("Pool", StringComparison.OrdinalIgnoreCase)
-        || p.Name.Contains("Colorless", StringComparison.OrdinalIgnoreCase)
-        || p.Name.Contains("Character", StringComparison.OrdinalIgnoreCase))
-        Console.WriteLine($"CARD {p.PropertyType.Name} {p.Name}");
-
-var pool = asm.GetType("MegaCrit.Sts2.Core.Models.CardPoolModel")!;
-foreach (var p in pool.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-    if (p.Name.Contains("Colorless", StringComparison.OrdinalIgnoreCase) || p.Name == "Title")
-        Console.WriteLine($"POOL {p.PropertyType.Name} {p.Name}");
+var sts2Path = @"D:\citrus_steam_games\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64\sts2.dll";
+var decompiler = new CSharpDecompiler(sts2Path, new DecompilerSettings { ThrowOnAssemblyResolveErrors = false });
+var type = decompiler.TypeSystem.FindType(new FullTypeName("MegaCrit.Sts2.Core.Entities.Merchant.MerchantCardEntry")).GetDefinition()!;
+foreach (var p in type.Properties)
+  Console.WriteLine("PROP " + p);
+foreach (var f in type.Fields)
+  Console.WriteLine("FIELD " + f);

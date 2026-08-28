@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
@@ -14,6 +15,8 @@ public static class RefinedPoolService
 {
     public const int MinimumRewardCards = 3;
 
+    private static readonly ConditionalWeakTable<Player, HashSet<string>> MerchantExcludedCardIds = new();
+
     private static ModDataStore Store => RitsuLibFramework.GetDataStore(RefinedGemEntry.ModId);
 
     public static bool ShouldUseRefinedPool(Player player) =>
@@ -26,19 +29,41 @@ public static class RefinedPoolService
         if (!ShouldUseRefinedPool(player))
             return options;
 
-        var eligibleCards = GetCardsForRun(player).ToList();
+        var eligibleCards = GetDistinctCardsForRun(player);
         if (eligibleCards.Count < MinimumRewardCards)
             return options;
 
         var allowed = eligibleCards
-            .Select(card => card.CanonicalInstance)
-            .ToHashSet();
+            .Select(GetStableCardId)
+            .ToHashSet(StringComparer.Ordinal);
 
         return options
             .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
-            .WithFilter(card => allowed.Contains(card.CanonicalInstance))
+            .WithFilter(card => allowed.Contains(GetStableCardId(card)))
             .WithRarityOdds(CardRarityOddsType.Uniform);
     }
+
+    private static void TrackMerchantSelectedCardId(Player player, string cardId)
+    {
+        if (!MerchantExcludedCardIds.TryGetValue(player, out var excluded))
+            return;
+
+        excluded.Add(cardId);
+    }
+
+    public static void BeginMerchantPopulation(Player player)
+    {
+        if (!MerchantExcludedCardIds.TryGetValue(player, out var excluded))
+        {
+            MerchantExcludedCardIds.Add(player, []);
+            return;
+        }
+
+        excluded.Clear();
+    }
+
+    public static void TrackMerchantSelectedCard(Player player, CardModel card) =>
+        TrackMerchantSelectedCardId(player, GetStableCardId(card.CanonicalInstance));
 
     public static IEnumerable<CardModel> GetMerchantCardsForRun(Player player, IEnumerable<CardModel> vanillaCards)
     {
@@ -47,11 +72,21 @@ public static class RefinedPoolService
         if (!ShouldUseRefinedPool(player))
             return vanillaList;
 
-        var eligible = GetCardsForRun(player).ToList();
-        if (eligible.Count < MinimumRewardCards)
+        if (IsColorlessMerchantPool(vanillaList))
             return vanillaList;
 
-        if (IsColorlessMerchantPool(vanillaList))
+        var eligible = GetDistinctCardsForRun(player);
+        var excludedCount = 0;
+        if (MerchantExcludedCardIds.TryGetValue(player, out var excluded))
+        {
+            excludedCount = excluded.Count;
+            eligible = eligible.Where(card => !excluded.Contains(GetStableCardId(card))).ToList();
+        }
+
+        if (eligible.Count == 0)
+            return vanillaList;
+
+        if (eligible.Count < MinimumRewardCards && excludedCount == 0)
             return vanillaList;
 
         if (!HasMerchantTypeCoverage(eligible))
@@ -81,10 +116,14 @@ public static class RefinedPoolService
     public static IReadOnlyList<CardModel> GetCanonicalCardsForProfile()
     {
         var cards = new List<CardModel>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var id in GetProfile().CardIds)
         {
+            if (!seenIds.Add(id))
+                continue;
+
             if (TryResolveCard(id, out var card))
-                cards.Add(card);
+                cards.Add(card.CanonicalInstance);
         }
 
         return cards;
@@ -96,6 +135,9 @@ public static class RefinedPoolService
         return GetCanonicalCardsForProfile()
             .Where(card => IsEligibleForRun(card, constraint));
     }
+
+    public static IReadOnlyList<CardModel> GetDistinctCardsForRun(Player player) =>
+        GetCardsForRun(player).ToList();
 
     private static bool IsColorlessMerchantPool(IReadOnlyList<CardModel> cards) =>
         cards.Count > 0 && cards.All(card => card.Pool.IsColorless);

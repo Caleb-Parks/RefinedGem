@@ -67,16 +67,6 @@ foreach ($name in $pngNames) {
     Write-Host "    + res://$rel"
 }
 
-$locSrc = Join-Path $Root 'localization'
-if (Test-Path $locSrc) {
-    $locDst = Join-Path $PckRoot 'localization'
-    Copy-Item $locSrc $locDst -Recurse -Force
-    Get-ChildItem $locDst -Recurse -File | ForEach-Object {
-        $rel = $_.FullName.Substring((Resolve-Path $PckRoot).Path.Length + 1).Replace('\', '/')
-        Write-Host "    + res://$rel"
-    }
-}
-
 Write-Host "[pck] Creating RefinedGem.pck with GDRE ..."
 $outFull = Join-Path $Root $OutPck
 New-Item -ItemType Directory -Force -Path (Split-Path $outFull) | Out-Null

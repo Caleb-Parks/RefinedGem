@@ -8,17 +8,16 @@ using STS2RitsuLib.Scaffolding.Content;
 
 namespace RefinedGem.Content;
 
-[RegisterRelic(typeof(RefinedModRelicPool))]
+[RegisterRelic(typeof(RefinedModRelicPool), FullPublicEntry = "REFINED_GEM")]
 public sealed class RefinedGemRelic : ModRelicTemplate
 {
-    public override RelicRarity Rarity => RelicRarity.Uncommon;
+    public override RelicRarity Rarity => RelicRarity.Ancient;
 
     public override string CustomIconPath => "res://assets/refined_gem_relic.png";
 
     public override string CustomIconOutlinePath => "res://assets/refined_gem_relic_outline.png";
 
-    public override bool IsAllowedAtNeow(Player player) =>
-        RefinedGemRuntime.SettingsCache.Value.AddToNeowPool;
+    public override bool IsAllowedAtNeow(Player player) => true;
 
     public override CardCreationOptions ModifyCardRewardCreationOptions(Player player, CardCreationOptions options) =>
         RefinedPoolService.ApplyCardCreationOptions(player, options);

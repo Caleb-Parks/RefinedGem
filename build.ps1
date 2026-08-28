@@ -62,6 +62,8 @@ New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
 New-Item -ItemType Directory -Force -Path (Join-Path $dist 'locales') | Out-Null
 
+New-Item -ItemType Directory -Force -Path (Join-Path $dist 'localization') | Out-Null
+
 New-Item -ItemType Directory -Force -Path (Join-Path $dist 'assets') | Out-Null
 
 
@@ -71,6 +73,8 @@ Copy-Item (Join-Path $Root 'build\dll\RefinedGem.dll') (Join-Path $dist 'Refined
 Copy-Item (Join-Path $Root 'mod_manifest.json') (Join-Path $dist 'RefinedGem.json') -Force
 
 Copy-Item (Join-Path $Root 'locales\eng.json') (Join-Path $dist 'locales\eng.json') -Force
+
+Copy-Item (Join-Path $Root 'localization\*') (Join-Path $dist 'localization') -Recurse -Force
 
 Copy-Item (Join-Path $Root 'assets\*') (Join-Path $dist 'assets') -Force -ErrorAction SilentlyContinue
 

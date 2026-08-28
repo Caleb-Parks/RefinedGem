@@ -26,8 +26,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Deploy
 1. Enable **Refined Gem** and **RitsuLib** in the in-game mod menu.
 2. Open **Card Library** (compendium). Use **Edit Refined Pool** to toggle cards into your pool from any character/pool filter.
 3. Select the **Refined** compendium filter to review your curated pool.
-4. During a run, obtain **Refined Gem**. While you hold it and your Refined pool is non-empty, combat rewards and shop cards are drawn from that pool (per player in multiplayer).
-5. In mod settings, enable **Add Refined Gem to Neow** to allow the relic at Neow.
+4. During a run, obtain **Refined Gem** (including from Neow). While you hold it and your Refined pool is non-empty, combat rewards and shop cards are drawn from that pool (per player in multiplayer).
 
 If your Refined pool is empty, the relic has no card-pool effect.
 
@@ -37,5 +36,6 @@ If your Refined pool is empty, the relic has no card-pool effect.
 - [ ] Refined filter shows only curated cards
 - [ ] Refined Gem with empty pool: character pool unchanged
 - [ ] Refined Gem with curated pool: rewards and shop use refined cards only
-- [ ] Neow toggle off/on changes Neow eligibility
+- [ ] Refined Gem appears at Neow and in Compendium > Relic Collection > Ancient > Neow
+- [ ] Dev console `REFINED_GEM` grants the relic with correct title and description
 - [ ] Multiplayer: each player's relic and pool apply only to that player

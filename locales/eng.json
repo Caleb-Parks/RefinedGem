@@ -1,12 +1,4 @@
 {
-  "REFINED_GEM_RELIC_REFINED_GEM.title": "Refined Gem",
-  "REFINED_GEM_RELIC_REFINED_GEM.description": "Card rewards and shop offers are drawn from your [gold]Refined[/gold] card pool instead of your character pool.",
-  "REFINED_GEM_RELIC_REFINED_GEM.flavor": "Perfection, bottled.",
-  "REFINED_GEM_CARD_POOL_REFINED_CARD_POOL.title": "Refined",
-  "refined_gem.settings.page_title": "Refined Gem",
-  "refined_gem.settings.section_general": "General",
-  "refined_gem.settings.add_to_neow_pool": "Add Refined Gem to Neow",
-  "refined_gem.settings.add_to_neow_pool_desc": "When enabled, Refined Gem can appear among Neow's relic options.",
   "refined_gem.ui.edit_mode_label": "Edit Refined Pool",
   "refined_gem.ui.card_added": "Added to Refined pool.",
   "refined_gem.ui.card_removed": "Removed from Refined pool.",

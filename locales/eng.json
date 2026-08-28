@@ -7,8 +7,7 @@
   "refined_gem.settings.section_general": "General",
   "refined_gem.settings.add_to_neow_pool": "Add Refined Gem to Neow",
   "refined_gem.settings.add_to_neow_pool_desc": "When enabled, Refined Gem can appear among Neow's relic options.",
-  "refined_gem.ui.edit_mode_on": "Edit Refined Pool: ON",
-  "refined_gem.ui.edit_mode_off": "Edit Refined Pool: OFF",
+  "refined_gem.ui.edit_mode_label": "Edit Refined Pool",
   "refined_gem.ui.card_added": "Added to Refined pool.",
   "refined_gem.ui.card_removed": "Removed from Refined pool.",
   "refined_gem.ui.empty_pool_warning": "Your Refined pool is empty. Add cards in the Card Library while Edit mode is on."

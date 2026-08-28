@@ -1,3 +1,4 @@
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
@@ -13,7 +14,15 @@ internal static class CardLibraryReadyPatch
 {
     [HarmonyPostfix]
     private static void Postfix(NCardLibrary __instance) =>
-        CardLibrarySelectionController.Attach(__instance);
+        Callable.From(() => CardLibrarySelectionController.Attach(__instance)).CallDeferred();
+}
+
+[HarmonyPatch(typeof(NCardLibrary), "OnSubmenuOpened")]
+internal static class CardLibraryOpenedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(NCardLibrary __instance) =>
+        Callable.From(() => CardLibrarySelectionController.Attach(__instance)).CallDeferred();
 }
 
 [HarmonyPatch(typeof(NCardLibrary), "ShowCardDetail")]
@@ -29,7 +38,7 @@ internal static class CardLibraryShowCardDetailPatch
             return true;
 
         var wasInPool = RefinedPoolService.ContainsCard(card);
-        if (!CardLibrarySelectionController.TryToggleCard(card))
+        if (!CardLibrarySelectionController.TryToggleCard(card, holder))
             return false;
 
         RitsuToastService.ShowInfo(
@@ -42,6 +51,14 @@ internal static class CardLibraryShowCardDetailPatch
     }
 }
 
+[HarmonyPatch(typeof(NCardLibrary), "DisplayCardsAfterShortDelay")]
+internal static class CardLibraryDisplayCardsPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix() =>
+        Callable.From(CardLibrarySelectionController.RefreshAllPoolHighlights).CallDeferred();
+}
+
 [HarmonyPatch(typeof(NGridCardHolder), "SetCard")]
 internal static class GridCardHolderSetCardPatch
 {
@@ -49,9 +66,8 @@ internal static class GridCardHolderSetCardPatch
     private static void Postfix(NGridCardHolder __instance)
     {
         var card = __instance.CardModel;
-        if (card is null || !RefinedPoolService.ContainsCard(card))
-            return;
-
-        __instance.Modulate = new Godot.Color(0.85f, 1f, 0.95f);
+        CardLibrarySelectionController.ApplyPoolHighlight(
+            __instance,
+            card is not null && RefinedPoolService.ContainsCard(card));
     }
 }

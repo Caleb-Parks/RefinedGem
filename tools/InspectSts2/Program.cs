@@ -1,16 +1,19 @@
 using System.Reflection;
 
-var dir = @"D:\citrus_steam_games\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64";
-var resolver = new PathAssemblyResolver(Directory.GetFiles(dir, "*.dll"));
+var sts2Dir = @"D:\citrus_steam_games\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64";
+var resolver = new PathAssemblyResolver(Directory.GetFiles(sts2Dir, "*.dll"));
 using var mlc = new MetadataLoadContext(resolver);
-var asm = mlc.LoadFromAssemblyPath(Path.Combine(dir, "sts2.dll"));
+var asm = mlc.LoadFromAssemblyPath(Path.Combine(sts2Dir, "sts2.dll"));
 
 var lib = asm.GetType("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibrary")!;
-foreach (var f in lib.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+foreach (var name in new[] { "UpdateCardPoolFilter", "UpdateFilter", "DisplayCards", "DisplayCardsAfterShortDelay" })
 {
-    if (f.Name.StartsWith("_view") || f.Name is "_searchBar" or "_cardCountLabel" or "_grid")
-        Console.WriteLine($"{f.Name} -> {f.FieldType.Name}");
+    var m = lib.GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
+    Console.WriteLine($"=== {name} ===");
+    foreach (var p in m.GetParameters())
+        Console.WriteLine($"  {p.ParameterType.Name} {p.Name}");
 }
 
-var tick = asm.GetType("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NLibraryStatTickbox")!;
-Console.WriteLine("tickbox base: " + tick.BaseType?.Name);
+var filter = asm.GetType("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardPoolFilter")!;
+foreach (var p in filter.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+    Console.WriteLine($"FILTER PROP {p.PropertyType.Name} {p.Name}");

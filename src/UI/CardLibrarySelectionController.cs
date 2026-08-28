@@ -1,6 +1,6 @@
+using System.Collections;
 using Godot;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary;
 using HarmonyLib;
@@ -10,15 +10,33 @@ namespace RefinedGem.UI;
 
 public static class CardLibrarySelectionController
 {
-    private static readonly Color ActiveModulate = new(0.85f, 1f, 0.95f);
+    private const string RefinedPoolFilterStableId = "refined_pool";
+
+    private static readonly string[] VanillaPoolFilterFields =
+    [
+        "_ironcladFilter",
+        "_silentFilter",
+        "_defectFilter",
+        "_regentFilter",
+        "_necrobinderFilter",
+        "_colorlessFilter",
+        "_ancientsFilter",
+        "_miscPoolFilter",
+    ];
 
     private static NCardLibrary? _library;
     private static NLibraryStatTickbox? _editModeToggle;
+    private static NCardPoolFilter? _refinedPoolFilter;
 
     public static bool EditModeEnabled =>
         _editModeToggle is not null
         && GodotObject.IsInstanceValid(_editModeToggle)
         && _editModeToggle.IsTicked;
+
+    public static bool IsRefinedPoolViewActive =>
+        _refinedPoolFilter is not null
+        && GodotObject.IsInstanceValid(_refinedPoolFilter)
+        && _refinedPoolFilter.IsSelected;
 
     public static void Attach(NCardLibrary library)
     {
@@ -62,6 +80,7 @@ public static class CardLibrarySelectionController
             parent.MoveChild(_editModeToggle, anchor.GetIndex() + 1);
 
             Callable.From(FinalizeToggle).CallDeferred();
+            Callable.From(() => NotifyPoolFilterChanged(library)).CallDeferred();
         }
         catch (Exception ex)
         {
@@ -70,41 +89,35 @@ public static class CardLibrarySelectionController
         }
     }
 
-    public static bool TryToggleCard(CardModel card, NCardHolder holder)
+    public static void NotifyPoolFilterChanged(NCardLibrary library, NCardPoolFilter? filter = null)
+    {
+        if (filter is not null && IsRefinedPoolFilter(library, filter))
+            _refinedPoolFilter = filter;
+        else if (_refinedPoolFilter is null || !GodotObject.IsInstanceValid(_refinedPoolFilter))
+            _refinedPoolFilter = ResolveRefinedPoolFilter(library);
+
+        if (IsRefinedPoolViewActive)
+            RebindRefinedPoolFilterPredicate();
+    }
+
+    public static bool TryToggleCard(CardModel card)
     {
         if (!EditModeEnabled)
             return false;
 
         RefinedPoolService.ToggleCard(card);
-
-        if (holder is NGridCardHolder gridHolder)
-            ApplyPoolHighlight(gridHolder, RefinedPoolService.ContainsCard(card));
-        else
-            RefreshGrid();
-
+        RefreshAfterPoolChange();
         return true;
     }
 
-    public static void ApplyPoolHighlight(NGridCardHolder holder, bool inPool) =>
-        holder.Modulate = inPool ? ActiveModulate : Colors.White;
-
-    public static void RefreshAllPoolHighlights()
+    public static bool TryRemoveCard(CardModel card)
     {
-        if (_library is null || !GodotObject.IsInstanceValid(_library))
-            return;
+        if (!RefinedPoolService.ContainsCard(card))
+            return false;
 
-        var grid = AccessTools.Field(typeof(NCardLibrary), "_grid")?.GetValue(_library) as Node;
-        if (grid is null)
-            return;
-
-        foreach (var child in grid.GetChildren())
-        {
-            if (child is not NGridCardHolder gridHolder)
-                continue;
-
-            var card = gridHolder.CardModel;
-            ApplyPoolHighlight(gridHolder, card is not null && RefinedPoolService.ContainsCard(card));
-        }
+        RefinedPoolService.ToggleCard(card);
+        RefreshAfterPoolChange();
+        return true;
     }
 
     private static NLibraryStatTickbox? ResolveTickboxTemplate(NCardLibrary library)
@@ -134,10 +147,8 @@ public static class CardLibrarySelectionController
 
         try
         {
-            _editModeToggle.Toggled -= OnEditModeToggled;
             _editModeToggle.SetLabel(RefinedGemUiText.Get("refined_gem.ui.edit_mode_label"));
             _editModeToggle.IsTicked = false;
-            _editModeToggle.Toggled += OnEditModeToggled;
         }
         catch (Exception ex)
         {
@@ -146,27 +157,98 @@ public static class CardLibrarySelectionController
         }
     }
 
-    private static void OnEditModeToggled(NTickbox _) => RefreshGrid();
+    private static NCardPoolFilter? ResolveRefinedPoolFilter(NCardLibrary library)
+    {
+        var poolFilters = AccessTools.Field(typeof(NCardLibrary), "_poolFilters")?.GetValue(library);
+        if (poolFilters is not IDictionary dictionary)
+            return null;
+
+        NCardPoolFilter? fallback = null;
+
+        foreach (DictionaryEntry entry in dictionary)
+        {
+            if (entry.Key is not NCardPoolFilter filter)
+                continue;
+
+            if (string.Equals(filter.Name, RefinedPoolFilterStableId, StringComparison.Ordinal))
+                return filter;
+
+            if (fallback is null && IsRefinedPoolFilter(library, filter))
+                fallback = filter;
+        }
+
+        return fallback;
+    }
+
+    private static bool IsRefinedPoolFilter(NCardLibrary library, NCardPoolFilter filter)
+    {
+        if (!GodotObject.IsInstanceValid(filter))
+            return false;
+
+        if (string.Equals(filter.Name, RefinedPoolFilterStableId, StringComparison.Ordinal))
+            return true;
+
+        if (IsVanillaPoolFilter(library, filter))
+            return false;
+
+        var poolFilters = AccessTools.Field(typeof(NCardLibrary), "_poolFilters")?.GetValue(library);
+        return poolFilters is IDictionary dictionary && dictionary.Contains(filter);
+    }
+
+    private static bool IsVanillaPoolFilter(NCardLibrary library, NCardPoolFilter filter)
+    {
+        foreach (var fieldName in VanillaPoolFilterFields)
+        {
+            if (AccessTools.Field(typeof(NCardLibrary), fieldName)?.GetValue(library) is NCardPoolFilter vanilla
+                && ReferenceEquals(vanilla, filter))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void RebindRefinedPoolFilterPredicate()
+    {
+        if (_library is null
+            || !GodotObject.IsInstanceValid(_library)
+            || _refinedPoolFilter is null
+            || !GodotObject.IsInstanceValid(_refinedPoolFilter))
+            return;
+
+        var poolFilters = AccessTools.Field(typeof(NCardLibrary), "_poolFilters")?.GetValue(_library);
+        if (poolFilters is not IDictionary dictionary || !dictionary.Contains(_refinedPoolFilter))
+            return;
+
+        dictionary[_refinedPoolFilter] = (Func<CardModel, bool>)RefinedPoolService.ContainsCard;
+    }
 
     private static void Detach()
     {
         if (_editModeToggle is not null && GodotObject.IsInstanceValid(_editModeToggle))
-        {
-            _editModeToggle.Toggled -= OnEditModeToggled;
             _editModeToggle.QueueFree();
-        }
 
         _editModeToggle = null;
         _library = null;
+        _refinedPoolFilter = null;
     }
 
-    private static void RefreshGrid()
+    private static void RefreshAfterPoolChange()
     {
         if (_library is null || !GodotObject.IsInstanceValid(_library))
             return;
 
-        var updateFilter = AccessTools.Method(typeof(NCardLibrary), "UpdateFilter");
-        updateFilter?.Invoke(_library, [false]);
-        Callable.From(RefreshAllPoolHighlights).CallDeferred();
+        RebindRefinedPoolFilterPredicate();
+
+        if (IsRefinedPoolViewActive)
+        {
+            AccessTools.Method(typeof(NCardLibrary), "UpdateCardPoolFilter")
+                ?.Invoke(_library, [_refinedPoolFilter]);
+            AccessTools.Method(typeof(NCardLibrary), "UpdateFilter")
+                ?.Invoke(_library, [false]);
+            return;
+        }
+
+        if (EditModeEnabled)
+            AccessTools.Method(typeof(NCardLibrary), "UpdateFilter")?.Invoke(_library, [false]);
     }
 }

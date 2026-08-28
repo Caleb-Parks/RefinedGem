@@ -25,6 +25,14 @@ internal static class CardLibraryOpenedPatch
         Callable.From(() => CardLibrarySelectionController.Attach(__instance)).CallDeferred();
 }
 
+[HarmonyPatch(typeof(NCardLibrary), "UpdateCardPoolFilter")]
+internal static class CardLibraryPoolFilterPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(NCardLibrary __instance, NCardPoolFilter filter) =>
+        CardLibrarySelectionController.NotifyPoolFilterChanged(__instance, filter);
+}
+
 [HarmonyPatch(typeof(NCardLibrary), "ShowCardDetail")]
 internal static class CardLibraryShowCardDetailPatch
 {
@@ -34,40 +42,32 @@ internal static class CardLibraryShowCardDetailPatch
         if (holder.CardModel is not CardModel card)
             return true;
 
-        if (!CardLibrarySelectionController.EditModeEnabled)
+        if (CardLibrarySelectionController.EditModeEnabled)
+        {
+            var wasInPool = RefinedPoolService.ContainsCard(card);
+            if (!CardLibrarySelectionController.TryToggleCard(card))
+                return false;
+
+            RitsuToastService.ShowInfo(
+                "Refined Gem",
+                wasInPool
+                    ? RefinedGemUiText.Get("refined_gem.ui.card_removed")
+                    : RefinedGemUiText.Get("refined_gem.ui.card_added"));
+
+            return false;
+        }
+
+        if (!CardLibrarySelectionController.IsRefinedPoolViewActive)
             return true;
 
-        var wasInPool = RefinedPoolService.ContainsCard(card);
-        if (!CardLibrarySelectionController.TryToggleCard(card, holder))
-            return false;
+        if (!CardLibrarySelectionController.TryRemoveCard(card))
+            return true;
 
         RitsuToastService.ShowInfo(
             "Refined Gem",
-            wasInPool
-                ? RefinedGemUiText.Get("refined_gem.ui.card_removed")
-                : RefinedGemUiText.Get("refined_gem.ui.card_added"));
+            RefinedGemUiText.Get("refined_gem.ui.card_removed"));
 
         return false;
     }
 }
 
-[HarmonyPatch(typeof(NCardLibrary), "DisplayCardsAfterShortDelay")]
-internal static class CardLibraryDisplayCardsPatch
-{
-    [HarmonyPostfix]
-    private static void Postfix() =>
-        Callable.From(CardLibrarySelectionController.RefreshAllPoolHighlights).CallDeferred();
-}
-
-[HarmonyPatch(typeof(NGridCardHolder), "SetCard")]
-internal static class GridCardHolderSetCardPatch
-{
-    [HarmonyPostfix]
-    private static void Postfix(NGridCardHolder __instance)
-    {
-        var card = __instance.CardModel;
-        CardLibrarySelectionController.ApplyPoolHighlight(
-            __instance,
-            card is not null && RefinedPoolService.ContainsCard(card));
-    }
-}

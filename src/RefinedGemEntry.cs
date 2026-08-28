@@ -3,7 +3,6 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using RefinedGem.Data;
 using HarmonyLib;
-using RefinedGem.Patches;
 using STS2RitsuLib;
 using STS2RitsuLib.Content;
 using STS2RitsuLib.Interop;
@@ -22,7 +21,6 @@ public static class RefinedGemEntry
     public static void Initialize()
     {
         var assembly = Assembly.GetExecutingAssembly();
-
         Logger = RitsuLibFramework.CreateLogger(ModId);
         ModTypeDiscoveryHub.RegisterModAssembly(ModId, assembly);
 
@@ -50,7 +48,6 @@ public static class RefinedGemEntry
             .Apply();
 
         RegisterSettings();
-
         new Harmony(ModId).PatchAll(assembly);
     }
 

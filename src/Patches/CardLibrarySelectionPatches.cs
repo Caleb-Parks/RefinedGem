@@ -20,8 +20,11 @@ internal static class CardLibraryReadyPatch
 internal static class CardLibraryShowCardDetailPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(CardModel card)
+    private static bool Prefix(NCardHolder holder)
     {
+        if (holder.CardModel is not CardModel card)
+            return true;
+
         if (!CardLibrarySelectionController.EditModeEnabled)
             return true;
 
@@ -43,9 +46,10 @@ internal static class CardLibraryShowCardDetailPatch
 internal static class GridCardHolderSetCardPatch
 {
     [HarmonyPostfix]
-    private static void Postfix(NGridCardHolder __instance, CardModel card)
+    private static void Postfix(NGridCardHolder __instance)
     {
-        if (!RefinedPoolService.ContainsCard(card))
+        var card = __instance.CardModel;
+        if (card is null || !RefinedPoolService.ContainsCard(card))
             return;
 
         __instance.Modulate = new Godot.Color(0.85f, 1f, 0.95f);

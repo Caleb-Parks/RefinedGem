@@ -3,6 +3,8 @@ build/
 dist/
 bin/
 obj/
+godot/.godot/
+debug-*.log
 
 # IDE / OS
 .vs/

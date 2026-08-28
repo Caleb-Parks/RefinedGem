@@ -38,4 +38,8 @@
   <ItemGroup>
     <EmbeddedResource Include="locales\eng.json" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tools\**" />
+  </ItemGroup>
 </Project>

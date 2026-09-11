@@ -23,3 +23,22 @@ internal static class NeowAllPossibleOptionsPatch
     private static bool ReferencesRefinedGem(EventOption option) =>
         option.Relic?.CanonicalInstance is RefinedGemRelic;
 }
+
+[HarmonyPatch(typeof(Neow), "GenerateInitialOptions")]
+internal static class NeowGenerateInitialOptionsPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(Neow __instance, ref IReadOnlyList<EventOption> __result)
+    {
+        if (__result.Count == 0 || __result.Any(ReferencesRefinedGem))
+            return;
+
+        var options = __result.ToList();
+        // Keep three choices: replace the first positive slot with Refined Gem.
+        options[0] = RefinedGemNeowOption.Create(__instance);
+        __result = options;
+    }
+
+    private static bool ReferencesRefinedGem(EventOption option) =>
+        option.Relic?.CanonicalInstance is RefinedGemRelic;
+}

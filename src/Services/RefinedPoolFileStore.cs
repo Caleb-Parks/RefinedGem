@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Godot;
+using MegaCrit.Sts2.Core.Saves;
 using RefinedGem.Data;
-using STS2RitsuLib.Utils.Persistence;
 
 namespace RefinedGem.Services;
 
@@ -175,16 +175,25 @@ internal static class RefinedPoolFileStore
 
     private static string? ResolveLegacyProfilePath()
     {
-        var godotPath = ProfileManager.Instance.GetFilePath(
-            FileName,
-            SaveScope.Profile,
-            RefinedGemEntry.ModId);
+        try
+        {
+            var saveManager = SaveManager.Instance;
+            if (saveManager is null)
+                return null;
 
-        if (string.IsNullOrWhiteSpace(godotPath))
+            var relativePath = Path.Combine("mod_data", RefinedGemEntry.ModId, FileName);
+            var path = saveManager.GetProfileScopedPath(relativePath);
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            return path.StartsWith("user://", StringComparison.Ordinal)
+                ? ProjectSettings.GlobalizePath(path)
+                : path;
+        }
+        catch (Exception ex)
+        {
+            RefinedGemEntry.Logger.Warn($"Could not resolve legacy profile pool path: {ex.Message}");
             return null;
-
-        return godotPath.StartsWith("user://", StringComparison.Ordinal)
-            ? ProjectSettings.GlobalizePath(godotPath)
-            : godotPath;
+        }
     }
 }

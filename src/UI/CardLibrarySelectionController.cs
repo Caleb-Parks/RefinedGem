@@ -72,6 +72,7 @@ public static class CardLibrarySelectionController
             }
 
             _library = library;
+            CardLibraryFeedback.Bind(library);
             _editModeToggle = (NLibraryStatTickbox)template.Duplicate();
             _editModeToggle.Name = "RefinedGemEditPoolToggle";
             _editModeToggle.Visible = true;
@@ -227,6 +228,7 @@ public static class CardLibrarySelectionController
         if (_editModeToggle is not null && GodotObject.IsInstanceValid(_editModeToggle))
             _editModeToggle.QueueFree();
 
+        CardLibraryFeedback.Detach();
         _editModeToggle = null;
         _library = null;
         _refinedPoolFilter = null;

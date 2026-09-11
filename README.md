@@ -5,7 +5,6 @@ Slay the Spire 2 mod that lets you curate a custom **Refined** card pool from th
 ## Requirements
 
 - Slay the Spire 2 (0.107.1+)
-- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) (`STS2-RitsuLib`)
 
 ## Build
 
@@ -17,7 +16,7 @@ Output: `dist\RefinedGem\` (also deployed to the game's `mods\RefinedGem` folder
 
 ## Usage
 
-1. Enable **Refined Gem** and **RitsuLib** in the in-game mod menu.
+1. Enable **Refined Gem** in the in-game mod menu.
 2. Open **Card Library** (compendium). Use **Edit Refined Pool** to toggle cards into your pool from any character/pool filter.
 3. Select the **Refined** compendium filter to review your curated pool.
 4. During a run, obtain **Refined Gem** (including from Neow). While you hold it and your Refined pool is non-empty, combat rewards and shop cards are drawn from that pool (per player in multiplayer).

@@ -24,7 +24,10 @@ public static class RefinedPoolService
             return options;
 
         var eligibleCards = GetDistinctCardsForRun(player);
-        if (eligibleCards.Count < MinimumRewardCards)
+        // CreateForReward ignores Basic/Ancient under Uniform and rarity rolls need non-basic stock.
+        var usableRewardCards = eligibleCards.Count(card =>
+            card.Rarity is not CardRarity.Basic and not CardRarity.Ancient);
+        if (usableRewardCards < MinimumRewardCards)
             return options;
 
         var allowed = eligibleCards

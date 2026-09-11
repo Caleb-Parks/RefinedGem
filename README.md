@@ -23,6 +23,12 @@ Output: `dist\RefinedGem\` (also deployed to the game's `mods\RefinedGem` folder
 
 If your Refined pool is empty, the relic has no card-pool effect.
 
+### Multiplayer
+
+Your curated pool stays in local `refined_pool.json` for editing. When you ready up in a multiplayer lobby, the mod broadcasts that snapshot to the other peers (and resends when someone joins or rejoins). Each peer keeps an in-memory copy keyed by player so rewards/shops/transforms stay deterministic. Remote pools are **not** written to your JSON file.
+
+All players need the same Refined Gem version (`affects_gameplay: true`).
+
 ## Refined pool file
 
 Your curated pool is stored in `refined_pool.json` next to the mod DLL (for example `mods/RefinedGem/refined_pool.json`). The pool is global for that mod install, not per save profile.
@@ -57,3 +63,6 @@ On first run after this update, if you had cards saved in the old profile-scoped
 - [ ] Refined Gem appears at Neow and in Compendium > Relic Collection > Ancient > Neow
 - [ ] Dev console `REFINED_GEM` grants the relic with correct title and description
 - [ ] Multiplayer: each player's relic and pool apply only to that player
+- [ ] Multiplayer: two players ready up with different `refined_pool.json` contents; each still gets their own pool for rewards/transforms, and the run does not desync
+- [ ] Multiplayer: late joiner receives pool snapshots from already-ready peers
+- [ ] Multiplayer: local `refined_pool.json` is unchanged after a session with differently pooled peers

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
@@ -15,7 +16,7 @@ public static class RefinedPoolService
     private static readonly ConditionalWeakTable<Player, HashSet<string>> MerchantExcludedCardIds = new();
 
     public static bool ShouldUseRefinedPool(Player player) =>
-        player.GetRelic<RefinedGemRelic>() is not null && GetActiveCardCount() > 0;
+        player.GetRelic<RefinedGemRelic>() is not null && GetCardIdsForPlayer(player).Count > 0;
 
     public static int GetActiveCardCount() => GetCanonicalCardsForProfile().Count;
 
@@ -161,11 +162,50 @@ public static class RefinedPoolService
         InvalidatePoolCache();
     }
 
-    public static IReadOnlyList<CardModel> GetCanonicalCardsForProfile()
+    /// <summary>
+    /// Local curated pool for Card Library editing/UI. Ignores multiplayer session snapshots.
+    /// </summary>
+    public static IReadOnlyList<CardModel> GetCanonicalCardsForProfile() =>
+        ResolveCards(RefinedPoolFileStore.GetCardIds());
+
+    /// <summary>
+    /// Cards exposed by <see cref="RefinedCardPool"/> (no player context). Uses the union of
+    /// session snapshots in multiplayer so remote-only ids can still resolve.
+    /// </summary>
+    public static IReadOnlyList<CardModel> GetCardsForCardPoolModel()
+    {
+        if (RefinedPoolSessionStore.HasEntries)
+            return ResolveCards(RefinedPoolSessionStore.GetUnionCardIds());
+
+        return GetCanonicalCardsForProfile();
+    }
+
+    public static IReadOnlyList<string> GetCardIdsForPlayer(Player player)
+    {
+        if (RefinedPoolSessionStore.TryGet(player.NetId, out var synced))
+            return synced;
+
+        if (LocalContext.IsMe(player))
+            return RefinedPoolFileStore.GetCardIds();
+
+        return [];
+    }
+
+    public static IEnumerable<CardModel> GetCardsForRun(Player player)
+    {
+        var constraint = player.RunState.CardMultiplayerConstraint;
+        return ResolveCards(GetCardIdsForPlayer(player))
+            .Where(card => IsEligibleForRun(card, constraint));
+    }
+
+    public static IReadOnlyList<CardModel> GetDistinctCardsForRun(Player player) =>
+        GetCardsForRun(player).ToList();
+
+    private static IReadOnlyList<CardModel> ResolveCards(IEnumerable<string> cardIds)
     {
         var cards = new List<CardModel>();
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var id in RefinedPoolFileStore.GetCardIds())
+        foreach (var id in cardIds)
         {
             if (!seenIds.Add(id))
                 continue;
@@ -176,16 +216,6 @@ public static class RefinedPoolService
 
         return cards;
     }
-
-    public static IEnumerable<CardModel> GetCardsForRun(Player player)
-    {
-        var constraint = player.RunState.CardMultiplayerConstraint;
-        return GetCanonicalCardsForProfile()
-            .Where(card => IsEligibleForRun(card, constraint));
-    }
-
-    public static IReadOnlyList<CardModel> GetDistinctCardsForRun(Player player) =>
-        GetCardsForRun(player).ToList();
 
     private static bool IsColorlessMerchantPool(IReadOnlyList<CardModel> cards) =>
         cards.Count > 0 && cards.All(card => card.Pool.IsColorless);

@@ -41,6 +41,37 @@ internal static class RefinedPoolFileStore
         }
     }
 
+    internal static void SetCardIdsIncluded(IEnumerable<string> cardIds, bool included)
+    {
+        lock (Lock)
+        {
+            EnsureLoaded(forceReload: false);
+
+            var changed = false;
+            foreach (var cardId in cardIds)
+            {
+                if (string.IsNullOrWhiteSpace(cardId))
+                    continue;
+
+                if (included)
+                {
+                    if (_cardIds.Contains(cardId, StringComparer.Ordinal))
+                        continue;
+
+                    _cardIds.Add(cardId);
+                    changed = true;
+                }
+                else if (_cardIds.Remove(cardId))
+                {
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                SaveInternal();
+        }
+    }
+
     private static void EnsureLoaded(bool forceReload = false)
     {
         lock (Lock)

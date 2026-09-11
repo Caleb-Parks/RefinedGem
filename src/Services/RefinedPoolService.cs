@@ -100,6 +100,17 @@ public static class RefinedPoolService
         return true;
     }
 
+    public static void SetCardsIncluded(IEnumerable<CardModel> cards, bool included)
+    {
+        SetCardIdsIncluded(cards.Select(GetStableCardId), included);
+    }
+
+    public static void SetCardIdsIncluded(IEnumerable<string> cardIds, bool included)
+    {
+        RefinedPoolFileStore.SetCardIdsIncluded(cardIds, included);
+        InvalidatePoolCache();
+    }
+
     public static IReadOnlyList<CardModel> GetCanonicalCardsForProfile()
     {
         var cards = new List<CardModel>();

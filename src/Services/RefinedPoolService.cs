@@ -33,8 +33,7 @@ public static class RefinedPoolService
 
         return options
             .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
-            .WithFilter(card => allowed.Contains(GetStableCardId(card)))
-            .WithRarityOdds(CardRarityOddsType.Uniform);
+            .WithFilter(card => allowed.Contains(GetStableCardId(card)));
     }
 
     private static void TrackMerchantSelectedCardId(Player player, string cardId)

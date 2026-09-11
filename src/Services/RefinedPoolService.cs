@@ -70,26 +70,22 @@ public static class RefinedPoolService
             return vanillaList;
 
         var fullEligible = GetDistinctCardsForRun(player);
-        var eligible = fullEligible;
-        var excludedCount = 0;
-        if (MerchantExcludedCardIds.TryGetValue(player, out var excluded))
+        IReadOnlyList<CardModel> remainingEligible = fullEligible;
+        if (MerchantExcludedCardIds.TryGetValue(player, out var excluded) && excluded.Count > 0)
+            remainingEligible = fullEligible.Where(card => !excluded.Contains(GetStableCardId(card))).ToList();
+
+        // Mix per type: refined where the full pool covers that type's shop slots; vanilla otherwise.
+        // Gate on the full pool so stocking Attack/Skill slots does not flip later types to vanilla.
+        var mixed = new List<CardModel>();
+        foreach (var type in MerchantColoredCardTypes)
         {
-            excludedCount = excluded.Count;
-            eligible = fullEligible.Where(card => !excluded.Contains(GetStableCardId(card))).ToList();
+            if (HasCoverageForType(fullEligible, type))
+                mixed.AddRange(remainingEligible.Where(card => card.Type == type));
+            else
+                mixed.AddRange(vanillaList.Where(card => card.Type == type));
         }
 
-        if (eligible.Count == 0)
-            return vanillaList;
-
-        if (fullEligible.Count < MinimumRewardCards && excludedCount == 0)
-            return vanillaList;
-
-        // Gate on the full pool, not the post-exclusion remainder. Slot stocking removes
-        // attacks/skills before the Power entry runs; remaining skill count must not force vanilla.
-        if (!HasMerchantTypeCoverage(fullEligible))
-            return vanillaList;
-
-        return eligible;
+        return mixed.Count > 0 ? mixed : vanillaList;
     }
 
     public static bool ContainsCard(CardModel card) =>
@@ -131,14 +127,31 @@ public static class RefinedPoolService
     private static bool IsColorlessMerchantPool(IReadOnlyList<CardModel> cards) =>
         cards.Count > 0 && cards.All(card => card.Pool.IsColorless);
 
-    private static bool HasMerchantTypeCoverage(IReadOnlyList<CardModel> cards)
+    // Matches MerchantInventory._coloredCardTypes slot totals: Attack x2, Skill x2, Power x1.
+    private static readonly CardType[] MerchantColoredCardTypes =
+    [
+        CardType.Attack,
+        CardType.Skill,
+        CardType.Power,
+    ];
+
+    private static int GetMerchantSlotRequirement(CardType type) =>
+        type switch
+        {
+            CardType.Attack => 2,
+            CardType.Skill => 2,
+            CardType.Power => 1,
+            _ => 0,
+        };
+
+    private static bool HasCoverageForType(IReadOnlyList<CardModel> cards, CardType type)
     {
-        // MerchantInventory stocks Attack, Attack, Skill, Skill, Power and CreateForMerchant
-        // excludes Basic cards, so coverage must use non-Basic counts for those slot totals.
-        var usable = cards.Where(card => card.Rarity != CardRarity.Basic).ToList();
-        return usable.Count(card => card.Type == CardType.Attack) >= 2
-            && usable.Count(card => card.Type == CardType.Skill) >= 2
-            && usable.Count(card => card.Type == CardType.Power) >= 1;
+        var required = GetMerchantSlotRequirement(type);
+        if (required <= 0)
+            return false;
+
+        // CreateForMerchant excludes Basic cards, so only non-Basic count toward coverage.
+        return cards.Count(card => card.Type == type && card.Rarity != CardRarity.Basic) >= required;
     }
 
     private static bool IsEligibleForRun(CardModel card, CardMultiplayerConstraint runConstraint) =>

@@ -69,21 +69,24 @@ public static class RefinedPoolService
         if (IsColorlessMerchantPool(vanillaList))
             return vanillaList;
 
-        var eligible = GetDistinctCardsForRun(player);
+        var fullEligible = GetDistinctCardsForRun(player);
+        var eligible = fullEligible;
         var excludedCount = 0;
         if (MerchantExcludedCardIds.TryGetValue(player, out var excluded))
         {
             excludedCount = excluded.Count;
-            eligible = eligible.Where(card => !excluded.Contains(GetStableCardId(card))).ToList();
+            eligible = fullEligible.Where(card => !excluded.Contains(GetStableCardId(card))).ToList();
         }
 
         if (eligible.Count == 0)
             return vanillaList;
 
-        if (eligible.Count < MinimumRewardCards && excludedCount == 0)
+        if (fullEligible.Count < MinimumRewardCards && excludedCount == 0)
             return vanillaList;
 
-        if (!HasMerchantTypeCoverage(eligible))
+        // Gate on the full pool, not the post-exclusion remainder. Slot stocking removes
+        // attacks/skills before the Power entry runs; remaining skill count must not force vanilla.
+        if (!HasMerchantTypeCoverage(fullEligible))
             return vanillaList;
 
         return eligible;
@@ -128,10 +131,15 @@ public static class RefinedPoolService
     private static bool IsColorlessMerchantPool(IReadOnlyList<CardModel> cards) =>
         cards.Count > 0 && cards.All(card => card.Pool.IsColorless);
 
-    private static bool HasMerchantTypeCoverage(IReadOnlyList<CardModel> cards) =>
-        cards.Any(card => card.Type == CardType.Attack)
-        && cards.Any(card => card.Type == CardType.Skill)
-        && cards.Any(card => card.Type == CardType.Power);
+    private static bool HasMerchantTypeCoverage(IReadOnlyList<CardModel> cards)
+    {
+        // MerchantInventory stocks Attack, Attack, Skill, Skill, Power and CreateForMerchant
+        // excludes Basic cards, so coverage must use non-Basic counts for those slot totals.
+        var usable = cards.Where(card => card.Rarity != CardRarity.Basic).ToList();
+        return usable.Count(card => card.Type == CardType.Attack) >= 2
+            && usable.Count(card => card.Type == CardType.Skill) >= 2
+            && usable.Count(card => card.Type == CardType.Power) >= 1;
+    }
 
     private static bool IsEligibleForRun(CardModel card, CardMultiplayerConstraint runConstraint) =>
         card.MultiplayerConstraint switch

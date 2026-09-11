@@ -1,11 +1,9 @@
 using Godot;
 using MegaCrit.Sts2.Core.Models;
 using RefinedGem.Services;
-using STS2RitsuLib.Interop.AutoRegistration;
 
 namespace RefinedGem.Content;
 
-[RegisterSharedCardPool]
 public sealed class RefinedCardPool : CardPoolModel
 {
     public override string Title => "Refined";

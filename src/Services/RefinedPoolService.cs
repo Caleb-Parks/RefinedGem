@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using RefinedGem.Content;
+using RefinedGem.Patches;
 
 namespace RefinedGem.Services;
 
@@ -37,6 +38,55 @@ public static class RefinedPoolService
         return options
             .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
             .WithFilter(card => allowed.Contains(GetStableCardId(card)));
+    }
+
+    /// <summary>
+    /// When Refined Gem is active, replace vanilla transform pools with the refined pool.
+    /// Prefers vanilla Common/Uncommon/Rare filtering; on failure, falls back to a uniform pick
+    /// among remaining refined candidates (still excluding the original and applying combat/MP filters).
+    /// </summary>
+    public static bool TryGetTransformationOptions(
+        CardModel original,
+        bool isInCombat,
+        out IEnumerable<CardModel> options)
+    {
+        options = null!;
+        if (!ShouldUseRefinedPool(original.Owner))
+            return false;
+
+        var candidates = GetDistinctCardsForRun(original.Owner);
+        if (candidates.Count == 0)
+            return false;
+
+        try
+        {
+            options = CardFactoryGetFilteredTransformationOptionsOriginal.Invoke(
+                original,
+                candidates,
+                isInCombat);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            var fallback = BuildUniformTransformationOptions(original, candidates, isInCombat);
+            if (fallback.Count == 0)
+                throw;
+
+            options = fallback;
+            return true;
+        }
+    }
+
+    private static IReadOnlyList<CardModel> BuildUniformTransformationOptions(
+        CardModel original,
+        IReadOnlyList<CardModel> candidates,
+        bool isInCombat)
+    {
+        IEnumerable<CardModel> source = candidates.Where(card => card.Id != original.Id);
+        if (isInCombat)
+            source = source.Where(card => card.CanBeGeneratedInCombat);
+
+        return CardFactoryFilterForPlayerCountOriginal.Invoke(original.Owner.RunState, source).ToList();
     }
 
     private static void TrackMerchantSelectedCardId(Player player, string cardId)

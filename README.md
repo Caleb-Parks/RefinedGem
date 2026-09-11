@@ -19,7 +19,7 @@ Output: `dist\RefinedGem\` (also deployed to the game's `mods\RefinedGem` folder
 1. Enable **Refined Gem** in the in-game mod menu.
 2. Open **Card Library** (compendium). Use **Edit Refined Pool** to toggle cards into your pool from any character/pool filter.
 3. Select the **Refined** compendium filter to review your curated pool.
-4. During a run, obtain **Refined Gem** (including from Neow). While you hold it and your Refined pool is non-empty, combat rewards and shop cards are drawn from that pool (per player in multiplayer).
+4. During a run, obtain **Refined Gem** (including from Neow). While you hold it and your Refined pool is non-empty, combat rewards, shop cards, and card transforms (relics, events, cards, combat) use that pool (per player in multiplayer).
 
 If your Refined pool is empty, the relic has no card-pool effect.
 
@@ -50,6 +50,10 @@ On first run after this update, if you had cards saved in the old profile-scoped
 - [ ] Refined filter shows only curated cards
 - [ ] Refined Gem with empty pool: character pool unchanged
 - [ ] Refined Gem with curated pool: rewards and shop use refined cards only
+- [ ] Refined Gem with curated pool: transform relics/events draw from refined cards; event transform preview cycles refined cards
+- [ ] Refined pool with only Basic cards: transforms still work via uniform fallback
+- [ ] Refined Gem with empty pool / no relic: transforms stay vanilla
+- [ ] Fixed-target transforms (e.g. Claws) remain unchanged
 - [ ] Refined Gem appears at Neow and in Compendium > Relic Collection > Ancient > Neow
 - [ ] Dev console `REFINED_GEM` grants the relic with correct title and description
 - [ ] Multiplayer: each player's relic and pool apply only to that player

@@ -16,8 +16,8 @@ internal static class CardCreationOptionsForRoomPatch
 }
 
 /// <summary>
-/// Prefer vanilla room rarity odds for refined rewards; if generation fails because the pool
-/// cannot satisfy the rolled rarities, retry once with Uniform among the refined pool.
+/// Constrained refined rewards first; on failure broaden to any refined card, then Uniform odds,
+/// then last-resort vanilla so tiny pools cannot soft-lock high-count events.
 /// </summary>
 [HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForReward), typeof(Player), typeof(int), typeof(CardCreationOptions))]
 internal static class CardFactoryCreateForRewardRarityFallbackPatch
@@ -29,8 +29,10 @@ internal static class CardFactoryCreateForRewardRarityFallbackPatch
         CardCreationOptions options,
         ref IEnumerable<CardCreationResult> __result)
     {
-        if (!RefinedPoolService.ShouldUseRefinedPool(player))
+        if (!RefinedPoolService.ShouldInterceptCreateForReward(player, options))
             return true;
+
+        var vanillaSnapshot = RefinedPoolService.CloneCardCreationOptions(options);
 
         try
         {
@@ -39,14 +41,37 @@ internal static class CardFactoryCreateForRewardRarityFallbackPatch
         }
         catch (InvalidOperationException)
         {
-            if (options.RarityOdds == CardRarityOddsType.Uniform)
-                throw;
+            // Drop event/relic rarity-type-cost filters; keep refined ID allowlist.
+            try
+            {
+                var broadened = RefinedPoolService.CreateBroadenedRefinedOptions(player, vanillaSnapshot);
+                __result = CardFactoryCreateForRewardOriginal.Invoke(player, cardCount, broadened);
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                if (vanillaSnapshot.RarityOdds != CardRarityOddsType.Uniform)
+                {
+                    try
+                    {
+                        var uniform = RefinedPoolService
+                            .CreateBroadenedRefinedOptions(player, vanillaSnapshot)
+                            .WithRarityOdds(CardRarityOddsType.Uniform);
+                        __result = CardFactoryCreateForRewardOriginal.Invoke(player, cardCount, uniform);
+                        return false;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Fall through to vanilla last resort.
+                    }
+                }
 
-            __result = CardFactoryCreateForRewardOriginal.Invoke(
-                player,
-                cardCount,
-                options.WithRarityOdds(CardRarityOddsType.Uniform));
-            return false;
+                using (RefinedPoolService.EnterModificationBypass())
+                {
+                    __result = CardFactoryCreateForRewardOriginal.Invoke(player, cardCount, vanillaSnapshot);
+                    return false;
+                }
+            }
         }
     }
 }

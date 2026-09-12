@@ -14,31 +14,133 @@ public static class RefinedPoolService
     public const int MinimumRewardCards = 3;
 
     private static readonly ConditionalWeakTable<Player, HashSet<string>> MerchantExcludedCardIds = new();
+    private static readonly AsyncLocal<int> ModificationBypassDepth = new();
 
     public static bool ShouldUseRefinedPool(Player player) =>
         player.GetRelic<RefinedGemRelic>() is not null && GetCardIdsForPlayer(player).Count > 0;
 
+    public static bool IsModificationBypassed => ModificationBypassDepth.Value > 0;
+
     public static int GetActiveCardCount() => GetCanonicalCardsForProfile().Count;
+
+    /// <summary>
+    /// Temporarily skip refined pool rewriting (Sea Glass exemption, last-resort vanilla fallback).
+    /// </summary>
+    public static ModificationBypassScope EnterModificationBypass()
+    {
+        ModificationBypassDepth.Value++;
+        return new ModificationBypassScope();
+    }
+
+    public readonly struct ModificationBypassScope : IDisposable
+    {
+        public void Dispose()
+        {
+            if (ModificationBypassDepth.Value > 0)
+                ModificationBypassDepth.Value--;
+        }
+    }
+
+    public static CardCreationOptions CloneCardCreationOptions(CardCreationOptions options)
+    {
+        var clone = new CardCreationOptions(
+            options.CardPools.ToList(),
+            options.Source,
+            options.RarityOdds,
+            options.CardPoolFilter);
+
+        if (options.Flags != 0)
+            clone.WithFlags(options.Flags);
+
+        if (options.RngOverride != null)
+            clone.WithRngOverride(options.RngOverride);
+
+        return clone;
+    }
 
     public static CardCreationOptions ApplyCardCreationOptions(Player player, CardCreationOptions options)
     {
-        if (!ShouldUseRefinedPool(player))
+        if (!ShouldRewriteCardCreationOptions(player, options))
             return options;
 
         var eligibleCards = GetDistinctCardsForRun(player);
-        // CreateForReward ignores Basic/Ancient under Uniform and rarity rolls need non-basic stock.
-        var usableRewardCards = eligibleCards.Count(card =>
-            card.Rarity is not CardRarity.Basic and not CardRarity.Ancient);
-        if (usableRewardCards < MinimumRewardCards)
-            return options;
+        var allowed = eligibleCards
+            .Select(GetStableCardId)
+            .ToHashSet(StringComparer.Ordinal);
+        var prior = options.CardPoolFilter;
 
+        // Clone so WithCardPools/WithFilter do not mutate the caller's vanilla options.
+        return CloneCardCreationOptions(options)
+            .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
+            .WithFilter(card =>
+                allowed.Contains(GetStableCardId(card))
+                && (prior == null || prior(card)));
+    }
+
+    /// <summary>
+    /// Refined pool with per-player ID allowlist only (drops any prior rarity/type/cost filter).
+    /// </summary>
+    public static CardCreationOptions CreateBroadenedRefinedOptions(Player player, CardCreationOptions snapshot)
+    {
+        var eligibleCards = GetDistinctCardsForRun(player);
         var allowed = eligibleCards
             .Select(GetStableCardId)
             .ToHashSet(StringComparer.Ordinal);
 
-        return options
+        return CloneCardCreationOptions(snapshot)
             .WithCardPools([ModelDb.CardPool<RefinedCardPool>()])
             .WithFilter(card => allowed.Contains(GetStableCardId(card)));
+    }
+
+    /// <summary>
+    /// True when CreateForReward should run the constrained→broaden→Uniform→vanilla ladder.
+    /// Already-refined options (e.g. from ForRoom) still intercept so rarity fallback works.
+    /// </summary>
+    public static bool ShouldInterceptCreateForReward(Player player, CardCreationOptions options)
+    {
+        if (!ShouldUseRefinedPool(player) || IsModificationBypassed)
+            return false;
+
+        if (IsRefinedPoolOptions(options))
+            return true;
+
+        return ShouldRewriteCardCreationOptions(player, options);
+    }
+
+    private static bool ShouldRewriteCardCreationOptions(Player player, CardCreationOptions options)
+    {
+        if (!ShouldUseRefinedPool(player) || IsModificationBypassed)
+            return false;
+
+        // Colorless / off-character sources stay vanilla (Brain Leech, Philosophers, Kaleidoscope, etc.).
+        // RefinedCardPool is labeled colorless, so only apply this before rewriting.
+        if (ContainsColorlessPool(options) || IsOffCharacterOnly(player, options))
+            return false;
+
+        var usableRewardCards = GetDistinctCardsForRun(player).Count(card =>
+            card.Rarity is not CardRarity.Basic and not CardRarity.Ancient);
+        return usableRewardCards >= MinimumRewardCards;
+    }
+
+    private static bool IsRefinedPoolOptions(CardCreationOptions options)
+    {
+        var refined = ModelDb.CardPool<RefinedCardPool>();
+        return options.CardPools.Count > 0
+            && options.CardPools.All(pool => ReferenceEquals(pool, refined));
+    }
+
+    private static bool ContainsColorlessPool(CardCreationOptions options) =>
+        options.CardPools.Any(pool => pool.IsColorless);
+
+    private static bool IsOffCharacterOnly(Player player, CardCreationOptions options)
+    {
+        if (options.CardPools.Count == 0)
+            return false;
+
+        var ownerPool = player.Character.CardPool;
+        var characterPools = ModelDb.AllCharacterCardPools.ToHashSet();
+        return options.CardPools.All(pool =>
+            characterPools.Contains(pool) && !ReferenceEquals(pool, ownerPool));
     }
 
     /// <summary>

@@ -66,3 +66,10 @@ On first run after this update, if you had cards saved in the old profile-scoped
 - [ ] Multiplayer: two players ready up with different `refined_pool.json` contents; each still gets their own pool for rewards/transforms, and the run does not desync
 - [ ] Multiplayer: late joiner receives pool snapshots from already-ready peers
 - [ ] Multiplayer: local `refined_pool.json` is unchanged after a session with differently pooled peers
+- [ ] Room Full of Cheese (Gorge): prefers Common refined cards; if stock is insufficient, broadens to any refined (Uniform)
+- [ ] Infested Automaton Study/Touch Core: prefer Power / 0-cost from refined; broaden to any refined on failure
+- [ ] Future of Potions: prefer mapped rarity+type from refined; broaden then Uniform backup on failure
+- [ ] Brain Leech Rip / Endless Conveyor Fried Eel / Lead Paperweight: colorless rewards stay vanilla
+- [ ] Colorful Philosophers / Kaleidoscope: off-character rewards stay vanilla
+- [ ] Sea Glass: stays fully vanilla
+- [ ] Crystal Sphere / Arcane Scroll / Glass Eye / Scroll Boxes: exact-rarity filters compose with refined

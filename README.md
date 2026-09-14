@@ -60,7 +60,7 @@ On first run after this update, if you had cards saved in the old profile-scoped
 - [ ] Refined pool with only Basic cards: transforms still work via uniform fallback
 - [ ] Refined Gem with empty pool / no relic: transforms stay vanilla
 - [ ] Fixed-target transforms (e.g. Claws) remain unchanged
-- [ ] Refined Gem appears at Neow and in Compendium > Relic Collection > Ancient > Neow
+- [ ] Refined Gem appears as a fourth Neow option (alongside the normal three) and in Compendium > Relic Collection > Ancient > Neow
 - [ ] Dev console `REFINED_GEM` grants the relic with correct title and description
 - [ ] Multiplayer: each player's relic and pool apply only to that player
 - [ ] Multiplayer: two players ready up with different `refined_pool.json` contents; each still gets their own pool for rewards/transforms, and the run does not desync

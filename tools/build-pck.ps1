@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
     [string] $Root = $(if ($PSScriptRoot) { Split-Path $PSScriptRoot -Parent } else { (Get-Location).Path }),
-    [string] $GodotExe = "D:\citrus_dev\repos\personal\cassiopeia\tools\bin\godot\Godot_v4.5.1-stable_mono_win64\Godot_v4.5.1-stable_mono_win64_console.exe",
-    [string] $Gdre = "D:\citrus_dev\repos\personal\cassiopeia\tools\bin\gdre\gdre_tools.exe",
+    [string] $GodotExe = "",
+    [string] $Gdre = "",
     [string] $GodotProj = "godot",
     [string] $PckRoot = "build/pck_root",
     [string] $OutPck = "dist/RefinedGem/RefinedGem.pck",
@@ -12,8 +12,22 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location $Root
 
-if (-not (Test-Path $GodotExe)) { throw "Godot not found at $GodotExe" }
-if (-not (Test-Path $Gdre)) { throw "GDRE not found at $Gdre" }
+function Resolve-Tool([string]$name, [string]$preferred, [string[]]$candidates) {
+    if ($preferred -and (Test-Path $preferred)) { return $preferred }
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+    throw "$name not found. Pass -$name <path> or install it in a known tools/bin location."
+}
+
+$GodotExe = Resolve-Tool 'GodotExe' $GodotExe @(
+    "D:\citrus_dev\repos\personal\cassiopeia\tools\bin\godot\Godot_v4.5.1-stable_mono_win64\Godot_v4.5.1-stable_mono_win64_console.exe",
+    "D:\citrus_dev\repos\personal\Skin-Art-Editor\tools\bin\godot\Godot_v4.5.1-stable_mono_win64\Godot_v4.5.1-stable_mono_win64_console.exe"
+)
+$Gdre = Resolve-Tool 'Gdre' $Gdre @(
+    "D:\citrus_dev\repos\personal\cassiopeia\tools\bin\gdre\gdre_tools.exe",
+    "D:\citrus_dev\repos\personal\Skin-Art-Editor\tools\bin\gdre\gdre_tools.exe"
+)
 
 $godot = (Resolve-Path $GodotExe).Path
 $gdre = (Resolve-Path $Gdre).Path

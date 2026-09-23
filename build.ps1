@@ -108,6 +108,9 @@ try {
 
     $staleManifest = Join-Path $modsDir 'mod_manifest.json'
     if (Test-Path $staleManifest) { Remove-Item $staleManifest -Force }
+
+    $staleDistManifest = Join-Path $dist 'mod_manifest.json'
+    if (Test-Path $staleDistManifest) { Remove-Item $staleDistManifest -Force }
     Write-Host "[build] Deployed to $modsDir"
 
 }

@@ -14,6 +14,20 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 
 Output: `dist\RefinedGem\` (also deployed to the game's `mods\RefinedGem` folder)
 
+## Steam Workshop
+
+Workshop item: https://steamcommunity.com/sharedfiles/filedetails/?id=3806910322
+
+Requires Steam running and logged into the account that owns Slay the Spire 2.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\publish-workshop.ps1
+```
+
+This rebuilds the mod, stages `workshop\content\` (always shipping an empty `refined_pool.json`), and uploads with Mega Crit's ModUploader. After the first successful upload, commit `workshop\mod_id.txt` so later publishes update the same Workshop item.
+
+Use `-SkipBuild` to reuse an existing `dist\RefinedGem\`, or `-SkipUpload` to inspect the staged package without publishing.
+
 ## Usage
 
 1. Enable **Refined Gem** in the in-game mod menu.

@@ -6,6 +6,11 @@ obj/
 godot/.godot/
 debug-*.log
 
+# Workshop package + uploader
+workshop/content/
+tools/bin/
+mod-uploader.log
+
 # IDE / OS
 .vs/
 .idea/

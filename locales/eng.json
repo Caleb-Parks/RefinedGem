@@ -2,5 +2,6 @@
   "refined_gem.ui.edit_mode_label": "Edit Refined Pool",
   "refined_gem.ui.card_added": "Added to Refined pool.",
   "refined_gem.ui.card_removed": "Removed from Refined pool.",
+  "refined_gem.ui.card_blacklisted": "This card can't be added to the Refined pool.",
   "refined_gem.ui.empty_pool_warning": "Your Refined pool is empty. Add cards in the Card Library while Edit mode is on."
 }

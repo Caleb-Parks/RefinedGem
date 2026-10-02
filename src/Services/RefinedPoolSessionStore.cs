@@ -85,7 +85,7 @@ internal static class RefinedPoolSessionStore
         var list = new List<string>();
         foreach (var id in cardIds)
         {
-            if (string.IsNullOrWhiteSpace(id))
+            if (string.IsNullOrWhiteSpace(id) || RefinedPoolBlacklist.IsBlacklisted(id))
                 continue;
 
             if (seen.Add(id))

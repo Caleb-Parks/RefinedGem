@@ -309,7 +309,7 @@ public static class RefinedPoolService
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var id in cardIds)
         {
-            if (!seenIds.Add(id))
+            if (RefinedPoolBlacklist.IsBlacklisted(id) || !seenIds.Add(id))
                 continue;
 
             if (TryResolveCard(id, out var card))

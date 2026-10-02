@@ -34,6 +34,13 @@ internal static class RefinedPoolFileStore
         lock (Lock)
         {
             EnsureLoaded(forceReload: false);
+            if (RefinedPoolBlacklist.IsBlacklisted(cardId))
+            {
+                if (_cardIds.Remove(cardId))
+                    SaveInternal();
+                return;
+            }
+
             if (!_cardIds.Remove(cardId))
                 _cardIds.Add(cardId);
 
@@ -51,6 +58,9 @@ internal static class RefinedPoolFileStore
             foreach (var cardId in cardIds)
             {
                 if (string.IsNullOrWhiteSpace(cardId))
+                    continue;
+
+                if (included && RefinedPoolBlacklist.IsBlacklisted(cardId))
                     continue;
 
                 if (included)
@@ -90,6 +100,7 @@ internal static class RefinedPoolFileStore
                 _cardIds = File.Exists(path) ? ParseFile(path) : [];
                 _loadedWriteTimeUtc = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
                 _initialized = true;
+                StripBlacklistedIds(path);
                 return;
             }
 
@@ -100,7 +111,17 @@ internal static class RefinedPoolFileStore
             _cardIds = ParseFile(path);
             _loadedWriteTimeUtc = writeTime;
             _initialized = true;
+            StripBlacklistedIds(path);
         }
+    }
+
+    private static void StripBlacklistedIds(string path)
+    {
+        if (_cardIds.RemoveAll(id => RefinedPoolBlacklist.IsBlacklisted(id)) <= 0)
+            return;
+
+        if (File.Exists(path))
+            SaveInternal();
     }
 
     private static string GetFilePath()

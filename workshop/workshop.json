@@ -2,7 +2,7 @@
   "title": "Refined Gem",
   "description": "Curate a custom Refined card pool from the Card Library and replace your run card sources with the Refined Gem relic.\n\n[h1]How to use[/h1]\n[olist]\n[*] Enable Refined Gem in the in-game mod menu.\n[*] Open Card Library (compendium). Use Edit Refined Pool to toggle cards into your pool from any character/pool filter.\n[*] Select the Refined filter to review your curated pool.\n[*] During a run, obtain Refined Gem (including from Neow). While you hold it and your pool is non-empty, combat rewards, shop cards, and card transforms use that pool.\n[/olist]\n\nIf your Refined pool is empty, the relic has no card-pool effect.\n\n[h1]Multiplayer[/h1]\nEach player uses their own curated pool. All players need the same Refined Gem version (this mod affects gameplay).\n\nRequires Slay the Spire 2 0.107.1+.",
   "visibility": "public",
-  "changeNote": "Remove RitusuLib as a required dependency.",
+  "changeNote": "Outrage and Largesse can no longer be added to the Refined pool.",
   "tags": [
     "Relics",
     "Gameplay"

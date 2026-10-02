@@ -3,5 +3,17 @@
   "refined_gem.ui.card_added": "Added to Refined pool.",
   "refined_gem.ui.card_removed": "Removed from Refined pool.",
   "refined_gem.ui.card_blacklisted": "This card can't be added to the Refined pool.",
-  "refined_gem.ui.empty_pool_warning": "Your Refined pool is empty. Add cards in the Card Library while Edit mode is on."
+  "refined_gem.ui.empty_pool_warning": "Your Refined pool is empty. Add cards in the Card Library while Edit mode is on.",
+  "refined_gem.ui.import_button": "Import",
+  "refined_gem.ui.export_button": "Export",
+  "refined_gem.ui.clear_button": "Clear",
+  "refined_gem.ui.import_title": "Import Refined Pool",
+  "refined_gem.ui.export_title": "Export Refined Pool",
+  "refined_gem.ui.clear_confirm": "Clear every card from the Refined pool?",
+  "refined_gem.ui.imported": "Imported {0} card(s).",
+  "refined_gem.ui.import_failed": "Could not read {0} file(s).",
+  "refined_gem.ui.exported": "Exported {0} card(s).",
+  "refined_gem.ui.export_failed": "Could not export the Refined pool.",
+  "refined_gem.ui.pool_cleared": "Refined pool cleared.",
+  "refined_gem.ui.file_dialog_failed": "Could not open the file dialog."
 }

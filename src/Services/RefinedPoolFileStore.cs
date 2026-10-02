@@ -8,6 +8,7 @@ namespace RefinedGem.Services;
 internal static class RefinedPoolFileStore
 {
     private const string FileName = "refined_pool.json";
+    private const string PoolFilesFolderName = "Pool Files";
 
     private static readonly object Lock = new();
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
@@ -53,33 +54,108 @@ internal static class RefinedPoolFileStore
         lock (Lock)
         {
             EnsureLoaded(forceReload: false);
-
-            var changed = false;
-            foreach (var cardId in cardIds)
-            {
-                if (string.IsNullOrWhiteSpace(cardId))
-                    continue;
-
-                if (included && RefinedPoolBlacklist.IsBlacklisted(cardId))
-                    continue;
-
-                if (included)
-                {
-                    if (_cardIds.Contains(cardId, StringComparer.Ordinal))
-                        continue;
-
-                    _cardIds.Add(cardId);
-                    changed = true;
-                }
-                else if (_cardIds.Remove(cardId))
-                {
-                    changed = true;
-                }
-            }
-
-            if (changed)
+            if (ApplyCardIdsIncluded(cardIds, included))
                 SaveInternal();
         }
+    }
+
+    /// <summary>
+    /// Adds ids that are not already present. Returns how many new ids were stored.
+    /// </summary>
+    internal static int AppendCardIds(IEnumerable<string> cardIds)
+    {
+        lock (Lock)
+        {
+            EnsureLoaded(forceReload: false);
+            var before = _cardIds.Count;
+            if (ApplyCardIdsIncluded(cardIds, included: true))
+                SaveInternal();
+            return _cardIds.Count - before;
+        }
+    }
+
+    internal static void Clear()
+    {
+        lock (Lock)
+        {
+            EnsureLoaded(forceReload: false);
+            _cardIds = [];
+            SaveInternal();
+        }
+    }
+
+    /// <summary>
+    /// Writes a copy of the current pool. Does not modify the live pool file.
+    /// </summary>
+    internal static int ExportTo(string path)
+    {
+        lock (Lock)
+        {
+            EnsureLoaded(forceReload: false);
+            WriteFile(path, _cardIds);
+            return _cardIds.Count;
+        }
+    }
+
+    internal static string GetPoolFilesDirectory()
+    {
+        var modDir = Path.GetDirectoryName(GetFilePath())
+            ?? throw new InvalidOperationException("Could not resolve mod directory from assembly location.");
+        var directory = Path.Combine(modDir, PoolFilesFolderName);
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    /// <summary>
+    /// Reads a pool file shaped like refined_pool.json. Invalid JSON is a failure, not an empty pool.
+    /// </summary>
+    internal static bool TryReadCardIds(string path, out IReadOnlyList<string> cardIds)
+    {
+        cardIds = [];
+        try
+        {
+            if (!TryParseCardIds(File.ReadAllText(path), out var parsed))
+            {
+                RefinedGemEntry.Logger.Warn($"Pool file '{path}' is not a card id list.");
+                return false;
+            }
+
+            cardIds = parsed;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            RefinedGemEntry.Logger.Warn($"Failed to read pool file '{path}': {ex.Message}");
+            return false;
+        }
+    }
+
+    private static bool ApplyCardIdsIncluded(IEnumerable<string> cardIds, bool included)
+    {
+        var changed = false;
+        foreach (var cardId in cardIds)
+        {
+            if (string.IsNullOrWhiteSpace(cardId))
+                continue;
+
+            if (included && RefinedPoolBlacklist.IsBlacklisted(cardId))
+                continue;
+
+            if (included)
+            {
+                if (_cardIds.Contains(cardId, StringComparer.Ordinal))
+                    continue;
+
+                _cardIds.Add(cardId);
+                changed = true;
+            }
+            else if (_cardIds.Remove(cardId))
+            {
+                changed = true;
+            }
+        }
+
+        return changed;
     }
 
     private static void EnsureLoaded(bool forceReload = false)
@@ -164,18 +240,29 @@ internal static class RefinedPoolFileStore
     {
         try
         {
-            using var document = JsonDocument.Parse(File.ReadAllText(path));
-            return document.RootElement.ValueKind switch
-            {
-                JsonValueKind.Array => ParseArray(document.RootElement),
-                JsonValueKind.Object => ParseLegacyProfile(document.RootElement),
-                _ => [],
-            };
+            return TryParseCardIds(File.ReadAllText(path), out var cardIds) ? cardIds : [];
         }
         catch (Exception ex)
         {
             RefinedGemEntry.Logger.Warn($"Failed to parse {FileName}; treating pool as empty. {ex.Message}");
             return [];
+        }
+    }
+
+    private static bool TryParseCardIds(string json, out List<string> cardIds)
+    {
+        cardIds = [];
+        using var document = JsonDocument.Parse(json);
+        switch (document.RootElement.ValueKind)
+        {
+            case JsonValueKind.Array:
+                cardIds = ParseArray(document.RootElement);
+                return true;
+            case JsonValueKind.Object:
+                cardIds = ParseLegacyProfile(document.RootElement);
+                return true;
+            default:
+                return false;
         }
     }
 

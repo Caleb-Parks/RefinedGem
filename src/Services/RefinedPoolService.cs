@@ -264,6 +264,22 @@ public static class RefinedPoolService
         InvalidatePoolCache();
     }
 
+    public static int ImportCardIds(IEnumerable<string> cardIds)
+    {
+        var added = RefinedPoolFileStore.AppendCardIds(cardIds);
+        InvalidatePoolCache();
+        return added;
+    }
+
+    public static int ExportPool(string path) =>
+        RefinedPoolFileStore.ExportTo(path);
+
+    public static void ClearPool()
+    {
+        RefinedPoolFileStore.Clear();
+        InvalidatePoolCache();
+    }
+
     /// <summary>
     /// Local curated pool for Card Library editing/UI. Ignores multiplayer session snapshots.
     /// </summary>

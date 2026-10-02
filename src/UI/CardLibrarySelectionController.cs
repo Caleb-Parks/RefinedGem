@@ -34,6 +34,11 @@ public static class CardLibrarySelectionController
 
     private static NCardLibrary? _library;
     private static NLibraryStatTickbox? _editModeToggle;
+    private static HBoxContainer? _actionRow;
+    private static Button? _importButton;
+    private static Button? _exportButton;
+    private static Button? _clearButton;
+    private static ConfirmationDialog? _clearDialog;
     private static NCardPoolFilter? _refinedPoolFilter;
     private static string? _rangeAnchorCardId;
     private static List<string>? _rangeSnapshotIds;
@@ -72,7 +77,8 @@ public static class CardLibrarySelectionController
                 return;
             }
 
-            var anchor = ResolveAnchor(library, template);
+            var multiplayerToggle = ResolveMultiplayerToggle(library);
+            var anchor = multiplayerToggle ?? ResolveAnchor(library, template);
             if (anchor is null)
             {
                 RefinedGemEntry.Logger.Warn("[RefinedGem] Could not find a Card Library anchor; Edit Refined Pool toggle not added.");
@@ -93,7 +99,28 @@ public static class CardLibrarySelectionController
             _editModeToggle.Visible = true;
 
             parent.AddChild(_editModeToggle);
-            parent.MoveChild(_editModeToggle, anchor.GetIndex() + 1);
+            var editIndex = multiplayerToggle is not null ? anchor.GetIndex() : anchor.GetIndex() + 1;
+            parent.MoveChild(_editModeToggle, editIndex);
+
+            var buttonHeight = template.CustomMinimumSize.Y > 1f ? template.CustomMinimumSize.Y : 36f;
+            _actionRow = new HBoxContainer
+            {
+                Name = "RefinedGemPoolActions",
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                CustomMinimumSize = new Vector2(0, buttonHeight),
+            };
+            _actionRow.AddThemeConstantOverride("separation", 8);
+            parent.AddChild(_actionRow);
+            parent.MoveChild(_actionRow, _editModeToggle.GetIndex() + 1);
+
+            _importButton = CreateActionButton("RefinedGemImportButton", "refined_gem.ui.import_button", OnImportPressed, buttonHeight);
+            _exportButton = CreateActionButton("RefinedGemExportButton", "refined_gem.ui.export_button", OnExportPressed, buttonHeight);
+            _clearButton = CreateActionButton("RefinedGemClearButton", "refined_gem.ui.clear_button", OnClearPressed, buttonHeight);
+            _actionRow.AddChild(_importButton);
+            _actionRow.AddChild(_exportButton);
+            _actionRow.AddChild(_clearButton);
 
             ConnectProcessFrame(library);
             Callable.From(FinalizeToggle).CallDeferred();
@@ -283,6 +310,16 @@ public static class CardLibrarySelectionController
         return null;
     }
 
+    private static Node? ResolveMultiplayerToggle(NCardLibrary library)
+    {
+        if (AccessTools.Field(typeof(NCardLibrary), "_viewMultiplayerCards")?.GetValue(library) is Node toggle
+            && GodotObject.IsInstanceValid(toggle)
+            && toggle.GetParent() is not null)
+            return toggle;
+
+        return null;
+    }
+
     private static Node? ResolveAnchor(NCardLibrary library, NLibraryStatTickbox template)
     {
         if (AccessTools.Field(typeof(NCardLibrary), "_searchBar")?.GetValue(library) is Node searchBar
@@ -381,6 +418,17 @@ public static class CardLibrarySelectionController
         if (_editModeToggle is not null && GodotObject.IsInstanceValid(_editModeToggle))
             _editModeToggle.QueueFree();
 
+        if (_actionRow is not null && GodotObject.IsInstanceValid(_actionRow))
+            _actionRow.QueueFree();
+        _actionRow = null;
+        _importButton = null;
+        _exportButton = null;
+        _clearButton = null;
+
+        if (_clearDialog is not null && GodotObject.IsInstanceValid(_clearDialog))
+            _clearDialog.QueueFree();
+        _clearDialog = null;
+
         CardLibraryFeedback.Detach();
         _editModeToggle = null;
         _library = null;
@@ -409,5 +457,146 @@ public static class CardLibrarySelectionController
 
         if (EditModeEnabled)
             AccessTools.Method(typeof(NCardLibrary), "UpdateFilter")?.Invoke(_library, [false]);
+    }
+
+    private static Button CreateActionButton(string name, string labelKey, Action pressed, float height)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = RefinedGemUiText.Get(labelKey),
+            FocusMode = Control.FocusModeEnum.All,
+            CustomMinimumSize = new Vector2(0, height),
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        button.Connect(Button.SignalName.Pressed, Callable.From(pressed));
+        return button;
+    }
+
+    private static void OnImportPressed()
+    {
+        ShowPoolFileDialog(
+            RefinedGemUiText.Get("refined_gem.ui.import_title"),
+            filename: "",
+            DisplayServer.FileDialogMode.OpenFiles,
+            OnImportDialogResult);
+    }
+
+    private static void OnExportPressed()
+    {
+        ShowPoolFileDialog(
+            RefinedGemUiText.Get("refined_gem.ui.export_title"),
+            filename: "refined_pool.json",
+            DisplayServer.FileDialogMode.SaveFile,
+            OnExportDialogResult);
+    }
+
+    private static void ShowPoolFileDialog(
+        string title,
+        string filename,
+        DisplayServer.FileDialogMode mode,
+        Action<bool, string[], long> onResult)
+    {
+        try
+        {
+            var directory = RefinedPoolFileStore.GetPoolFilesDirectory();
+            var error = DisplayServer.FileDialogShow(
+                title,
+                directory,
+                filename,
+                false,
+                mode,
+                ["*.json ; JSON"],
+                Callable.From(onResult));
+
+            if (error != Error.Ok)
+            {
+                RefinedGemEntry.Logger.Warn($"[RefinedGem] File dialog failed: {error}");
+                CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.file_dialog_failed"));
+            }
+        }
+        catch (Exception ex)
+        {
+            RefinedGemEntry.Logger.Warn($"[RefinedGem] File dialog failed: {ex.Message}");
+            CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.file_dialog_failed"));
+        }
+    }
+
+    private static void OnImportDialogResult(bool accepted, string[] paths, long _)
+    {
+        if (!accepted || paths is null || paths.Length == 0)
+            return;
+
+        var importedIds = new List<string>();
+        var failedFiles = 0;
+        foreach (var path in paths)
+        {
+            if (!RefinedPoolFileStore.TryReadCardIds(path, out var ids))
+            {
+                failedFiles++;
+                continue;
+            }
+
+            importedIds.AddRange(ids);
+        }
+
+        var added = RefinedPoolService.ImportCardIds(importedIds);
+        RefreshAfterPoolChange();
+
+        var message = string.Format(RefinedGemUiText.Get("refined_gem.ui.imported"), added);
+        if (failedFiles > 0)
+            message += " " + string.Format(RefinedGemUiText.Get("refined_gem.ui.import_failed"), failedFiles);
+
+        CardLibraryFeedback.Show(message);
+    }
+
+    private static void OnExportDialogResult(bool accepted, string[] paths, long _)
+    {
+        if (!accepted || paths is null || paths.Length == 0 || string.IsNullOrWhiteSpace(paths[0]))
+            return;
+
+        var path = paths[0];
+        if (!path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            path += ".json";
+
+        try
+        {
+            var exported = RefinedPoolService.ExportPool(path);
+            CardLibraryFeedback.Show(string.Format(RefinedGemUiText.Get("refined_gem.ui.exported"), exported));
+        }
+        catch (Exception ex)
+        {
+            RefinedGemEntry.Logger.Warn($"[RefinedGem] Failed to export refined pool: {ex.Message}");
+            CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.export_failed"));
+        }
+    }
+
+    private static void OnClearPressed()
+    {
+        if (_library is null || !GodotObject.IsInstanceValid(_library))
+            return;
+
+        if (_clearDialog is null || !GodotObject.IsInstanceValid(_clearDialog))
+        {
+            _clearDialog = new ConfirmationDialog
+            {
+                Name = "RefinedGemClearDialog",
+                Title = RefinedGemUiText.Get("refined_gem.ui.clear_button"),
+                DialogText = RefinedGemUiText.Get("refined_gem.ui.clear_confirm"),
+                OkButtonText = RefinedGemUiText.Get("refined_gem.ui.clear_button"),
+            };
+            _clearDialog.Confirmed += OnClearConfirmed;
+            _library.AddChild(_clearDialog);
+        }
+
+        _clearDialog.PopupCentered();
+    }
+
+    private static void OnClearConfirmed()
+    {
+        RefinedPoolService.ClearPool();
+        RefreshAfterPoolChange();
+        CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.pool_cleared"));
     }
 }

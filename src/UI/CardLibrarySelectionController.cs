@@ -8,6 +8,14 @@ using RefinedGem.Services;
 
 namespace RefinedGem.UI;
 
+public enum RefinedPoolEditAction
+{
+    Inactive,
+    Added,
+    Removed,
+    Rejected,
+}
+
 public static class CardLibrarySelectionController
 {
     private const string RefinedPoolFilterStableId = "refined_pool";
@@ -110,13 +118,12 @@ public static class CardLibrarySelectionController
     }
 
     /// <summary>
-    /// Handles an edit-mode card click. Returns whether cards were added (true) or removed (false).
+    /// Handles an edit-mode card click.
     /// </summary>
-    public static bool TryHandleEditClick(CardModel card, out bool added)
+    public static RefinedPoolEditAction TryHandleEditClick(CardModel card)
     {
-        added = false;
         if (!EditModeEnabled)
-            return false;
+            return RefinedPoolEditAction.Inactive;
 
         var cardId = GetStableCardId(card);
         var include = !RefinedPoolService.ContainsCard(card);
@@ -126,30 +133,34 @@ public static class CardLibrarySelectionController
         if (!shiftHeld)
         {
             ClearRangeState(refreshIfPending: false);
+            if (include && RefinedPoolBlacklist.IsBlacklisted(cardId))
+                return RefinedPoolEditAction.Rejected;
+
             RefinedPoolService.ToggleCard(card);
             RefreshAfterPoolChange();
-            added = include;
-            return true;
+            return include ? RefinedPoolEditAction.Added : RefinedPoolEditAction.Removed;
         }
 
         // Shift + existing anchor => complete range, then refresh.
+        // Blacklisted ids are skipped by the pool store when the range is an add.
         if (!string.IsNullOrEmpty(_rangeAnchorCardId)
             && TryGetRangeCardIds(card, out var rangeIds))
         {
             RefinedPoolService.SetCardIdsIncluded(rangeIds, _rangeOperationInclude);
             ClearRangeState(refreshIfPending: false);
             RefreshAfterPoolChange();
-            added = _rangeOperationInclude;
-            return true;
+            return _rangeOperationInclude ? RefinedPoolEditAction.Added : RefinedPoolEditAction.Removed;
         }
 
         // Shift + no usable anchor => start a new range. Mutate now, defer refresh.
+        if (include && RefinedPoolBlacklist.IsBlacklisted(cardId))
+            return RefinedPoolEditAction.Rejected;
+
         CaptureRangeSnapshot(cardId);
         _rangeOperationInclude = include;
         RefinedPoolService.ToggleCard(card);
         _pendingRefresh = true;
-        added = include;
-        return true;
+        return include ? RefinedPoolEditAction.Added : RefinedPoolEditAction.Removed;
     }
 
     private static bool IsShiftHeld() =>

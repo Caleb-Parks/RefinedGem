@@ -157,17 +157,21 @@ internal static class CardLibraryShowCardDetailPatch
         if (holder.CardModel is not CardModel card)
             return true;
 
-        if (!CardLibrarySelectionController.EditModeEnabled)
-            return true;
-
-        if (!CardLibrarySelectionController.TryHandleEditClick(card, out var added))
-            return false;
-
-        CardLibraryFeedback.Show(
-            added
-                ? RefinedGemUiText.Get("refined_gem.ui.card_added")
-                : RefinedGemUiText.Get("refined_gem.ui.card_removed"));
-
-        return false;
+        switch (CardLibrarySelectionController.TryHandleEditClick(card))
+        {
+            case RefinedPoolEditAction.Inactive:
+                return true;
+            case RefinedPoolEditAction.Added:
+                CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.card_added"));
+                return false;
+            case RefinedPoolEditAction.Removed:
+                CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.card_removed"));
+                return false;
+            case RefinedPoolEditAction.Rejected:
+                CardLibraryFeedback.Show(RefinedGemUiText.Get("refined_gem.ui.card_blacklisted"));
+                return false;
+            default:
+                return false;
+        }
     }
 }

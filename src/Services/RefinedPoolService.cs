@@ -15,6 +15,8 @@ public static class RefinedPoolService
 
     private static readonly ConditionalWeakTable<Player, HashSet<string>> MerchantExcludedCardIds = new();
     private static readonly AsyncLocal<int> ModificationBypassDepth = new();
+    private static readonly AsyncLocal<HashSet<string>?> StarterAsCommonIds = new();
+    private static readonly AsyncLocal<int> StarterPromotionSuspension = new();
 
     public static bool ShouldUseRefinedPool(Player player) =>
         player.GetRelic<RefinedGemRelic>() is not null && GetCardIdsForPlayer(player).Count > 0;
@@ -38,6 +40,79 @@ public static class RefinedPoolService
         {
             if (ModificationBypassDepth.Value > 0)
                 ModificationBypassDepth.Value--;
+        }
+    }
+
+    /// <summary>
+    /// While active, canonical Basic cards in this player's refined pool report as Common.
+    /// Clones (deck copies) stay Basic.
+    /// </summary>
+    public static IDisposable EnterStarterAsCommon(Player player)
+    {
+        if (!ShouldUseRefinedPool(player))
+            return NoopScope.Instance;
+
+        var previous = StarterAsCommonIds.Value;
+        StarterAsCommonIds.Value = GetCardIdsForPlayer(player).ToHashSet(StringComparer.Ordinal);
+        return new StarterAsCommonScope(previous);
+    }
+
+    public static bool ShouldReportStarterAsCommon(CardModel card)
+    {
+        if (StarterPromotionSuspension.Value > 0 || card.IsClone)
+            return false;
+
+        var ids = StarterAsCommonIds.Value;
+        return ids is not null && ids.Contains(GetStableCardId(card));
+    }
+
+    /// <summary>
+    /// Read the card's real rarity while a generation scope is active.
+    /// </summary>
+    public static IDisposable SuspendStarterPromotion()
+    {
+        StarterPromotionSuspension.Value++;
+        return new StarterPromotionSuspensionScope();
+    }
+
+    private sealed class StarterAsCommonScope : IDisposable
+    {
+        private readonly HashSet<string>? _previous;
+        private bool _disposed;
+
+        public StarterAsCommonScope(HashSet<string>? previous) => _previous = previous;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            StarterAsCommonIds.Value = _previous;
+        }
+    }
+
+    private sealed class NoopScope : IDisposable
+    {
+        public static readonly NoopScope Instance = new();
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class StarterPromotionSuspensionScope : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            if (StarterPromotionSuspension.Value > 0)
+                StarterPromotionSuspension.Value--;
         }
     }
 
@@ -117,8 +192,9 @@ public static class RefinedPoolService
         if (ContainsColorlessPool(options) || IsOffCharacterOnly(player, options))
             return false;
 
+        // Starters count: they are promoted to Common while rewards are generated.
         var usableRewardCards = GetDistinctCardsForRun(player).Count(card =>
-            card.Rarity is not CardRarity.Basic and not CardRarity.Ancient);
+            card.Rarity is not CardRarity.Ancient);
         return usableRewardCards >= MinimumRewardCards;
     }
 
@@ -163,10 +239,14 @@ public static class RefinedPoolService
 
         try
         {
-            options = CardFactoryGetFilteredTransformationOptionsOriginal.Invoke(
-                original,
-                candidates,
-                isInCombat);
+            using (EnterStarterAsCommon(original.Owner))
+            {
+                options = CardFactoryGetFilteredTransformationOptionsOriginal.Invoke(
+                    original,
+                    candidates,
+                    isInCombat);
+            }
+
             return true;
         }
         catch (InvalidOperationException)
@@ -237,7 +317,16 @@ public static class RefinedPoolService
             if (HasCoverageForType(fullEligible, type))
                 mixed.AddRange(remainingEligible.Where(card => card.Type == type));
             else
-                mixed.AddRange(vanillaList.Where(card => card.Type == type));
+            {
+                // Drop starters from the vanilla slice. Shop generation is already inside the
+                // promotion scope, so read the real Basic rarity or the shared canonical card
+                // would be offered as a Common just because its id is also in the refined pool.
+                using (SuspendStarterPromotion())
+                {
+                    mixed.AddRange(vanillaList.Where(card =>
+                        card.Type == type && card.Rarity != CardRarity.Basic));
+                }
+            }
         }
 
         return mixed.Count > 0 ? mixed : vanillaList;
@@ -361,8 +450,8 @@ public static class RefinedPoolService
         if (required <= 0)
             return false;
 
-        // CreateForMerchant excludes Basic cards, so only non-Basic count toward coverage.
-        return cards.Count(card => card.Type == type && card.Rarity != CardRarity.Basic) >= required;
+        // Starters are promoted to Common during CreateForMerchant, so they cover shop slots.
+        return cards.Count(card => card.Type == type) >= required;
     }
 
     private static bool IsEligibleForRun(CardModel card, CardMultiplayerConstraint runConstraint) =>

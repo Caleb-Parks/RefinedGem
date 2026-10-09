@@ -1,6 +1,9 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Factories;
+using MegaCrit.Sts2.Core.Models;
 using RefinedGem.Services;
 
 namespace RefinedGem.Patches;
@@ -27,4 +30,26 @@ internal static class MerchantCardEntryPopulatePatch
 
         RefinedPoolService.TrackMerchantSelectedCard(player, card);
     }
+}
+
+[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(CardType))]
+internal static class CardFactoryCreateForMerchantByTypePatch
+{
+    [HarmonyPrefix]
+    private static void Prefix(Player player, ref IDisposable? __state) =>
+        __state = RefinedPoolService.EnterStarterAsCommon(player);
+
+    [HarmonyFinalizer]
+    private static void Finalizer(IDisposable? __state) => __state?.Dispose();
+}
+
+[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(CardRarity))]
+internal static class CardFactoryCreateForMerchantByRarityPatch
+{
+    [HarmonyPrefix]
+    private static void Prefix(Player player, ref IDisposable? __state) =>
+        __state = RefinedPoolService.EnterStarterAsCommon(player);
+
+    [HarmonyFinalizer]
+    private static void Finalizer(IDisposable? __state) => __state?.Dispose();
 }

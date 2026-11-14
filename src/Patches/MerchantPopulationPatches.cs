@@ -32,7 +32,7 @@ internal static class MerchantCardEntryPopulatePatch
     }
 }
 
-[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(CardType))]
+[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(IEnumerable<CardModel>), typeof(CardType))]
 internal static class CardFactoryCreateForMerchantByTypePatch
 {
     [HarmonyPrefix]
@@ -43,7 +43,7 @@ internal static class CardFactoryCreateForMerchantByTypePatch
     private static void Finalizer(IDisposable? __state) => __state?.Dispose();
 }
 
-[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(CardRarity))]
+[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.CreateForMerchant), typeof(Player), typeof(IEnumerable<CardModel>), typeof(IEnumerable<CardModel>), typeof(CardRarity))]
 internal static class CardFactoryCreateForMerchantByRarityPatch
 {
     [HarmonyPrefix]

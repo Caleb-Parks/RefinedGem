@@ -269,7 +269,7 @@ public static class RefinedPoolService
         if (isInCombat)
             source = source.Where(card => card.CanBeGeneratedInCombat);
 
-        return CardFactoryFilterForPlayerCountOriginal.Invoke(original.Owner.RunState, source).ToList();
+        return CardFactoryFilterForRunOriginal.Invoke(original.Owner.RunState, source).ToList();
     }
 
     private static void TrackMerchantSelectedCardId(Player player, string cardId)
@@ -400,9 +400,9 @@ public static class RefinedPoolService
 
     public static IEnumerable<CardModel> GetCardsForRun(Player player)
     {
-        var constraint = player.RunState.CardMultiplayerConstraint;
+        var runState = player.RunState;
         return ResolveCards(GetCardIdsForPlayer(player))
-            .Where(card => IsEligibleForRun(card, constraint));
+            .Where(card => card.IsAllowedInRun(runState));
     }
 
     public static IReadOnlyList<CardModel> GetDistinctCardsForRun(Player player) =>
@@ -453,17 +453,6 @@ public static class RefinedPoolService
         // Starters are promoted to Common during CreateForMerchant, so they cover shop slots.
         return cards.Count(card => card.Type == type) >= required;
     }
-
-    private static bool IsEligibleForRun(CardModel card, CardMultiplayerConstraint runConstraint) =>
-        card.MultiplayerConstraint switch
-        {
-            CardMultiplayerConstraint.None => true,
-            CardMultiplayerConstraint.MultiplayerOnly =>
-                runConstraint is CardMultiplayerConstraint.None or CardMultiplayerConstraint.MultiplayerOnly,
-            CardMultiplayerConstraint.SingleplayerOnly =>
-                runConstraint is CardMultiplayerConstraint.None or CardMultiplayerConstraint.SingleplayerOnly,
-            _ => true,
-        };
 
     public static void InvalidatePoolCache() => RefinedCardPool.InvalidateCachedCards();
 

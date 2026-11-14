@@ -36,8 +36,8 @@ internal static class CardFactoryGetFilteredTransformationOptionsOriginal
         throw new NotImplementedException("Harmony reverse patch stub.");
 }
 
-[HarmonyPatch(typeof(CardFactory), "FilterForPlayerCount")]
-internal static class CardFactoryFilterForPlayerCountOriginal
+[HarmonyPatch(typeof(CardFactory), "FilterForRun")]
+internal static class CardFactoryFilterForRunOriginal
 {
     [HarmonyReversePatch]
     internal static IEnumerable<CardModel> Invoke(IRunState runState, IEnumerable<CardModel> options) =>

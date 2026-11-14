@@ -4,9 +4,9 @@
   "name": "Refined Gem",
   "author": "caleb",
   "description": "Curate a custom Refined card pool from the Card Library and replace your reward pool with the Refined Gem relic.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "has_dll": true,
   "has_pck": true,
   "affects_gameplay": true,
-  "min_game_version": "0.107.1"
+  "min_game_version": "0.113.0"
 }

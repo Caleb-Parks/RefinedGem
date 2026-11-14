@@ -12,7 +12,7 @@ using RefinedGem.Services;
 namespace RefinedGem.Patches;
 
 [HarmonyPatch(typeof(StartRunLobby), MethodType.Constructor,
-    [typeof(GameMode), typeof(INetGameService), typeof(IStartRunLobbyListener), typeof(int)])]
+    [typeof(GameMode), typeof(bool), typeof(INetGameService), typeof(IStartRunLobbyListener), typeof(int)])]
 internal static class StartRunLobbyCtorPatch
 {
     [HarmonyPostfix]
@@ -21,7 +21,7 @@ internal static class StartRunLobbyCtorPatch
 }
 
 [HarmonyPatch(typeof(StartRunLobby), MethodType.Constructor,
-    [typeof(GameMode), typeof(INetGameService), typeof(IStartRunLobbyListener), typeof(TimeServerResult), typeof(int)])]
+    [typeof(GameMode), typeof(bool), typeof(INetGameService), typeof(IStartRunLobbyListener), typeof(TimeServerResult), typeof(int)])]
 internal static class StartRunLobbyCtorDailyPatch
 {
     [HarmonyPostfix]

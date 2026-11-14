@@ -27,6 +27,7 @@ public static class CardLibrarySelectionController
         "_defectFilter",
         "_regentFilter",
         "_necrobinderFilter",
+        "_foolFilter",
         "_colorlessFilter",
         "_ancientsFilter",
         "_miscPoolFilter",

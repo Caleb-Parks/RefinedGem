@@ -10,7 +10,7 @@ internal static class RefinedGemNeowOption
         "RelicOption",
         BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
         binder: null,
-        types: [typeof(RelicModel), typeof(string), typeof(string)],
+        types: [typeof(RelicModel), typeof(string)],
         modifiers: null)!;
 
     public static EventOption Create(AncientEventModel ancient)
@@ -19,8 +19,7 @@ internal static class RefinedGemNeowOption
         if (ancient.Owner is not null)
             relic.Owner = ancient.Owner;
 
-        return (EventOption)RelicOptionMethod.Invoke(
-            ancient,
-            [relic, "INITIAL", "NEOW.pages.DONE.POSITIVE.description"])!;
+        // STS2 0.113+: RelicOption(relic, pageName) uses the relic title/description.
+        return (EventOption)RelicOptionMethod.Invoke(ancient, [relic, "INITIAL"])!;
     }
 }

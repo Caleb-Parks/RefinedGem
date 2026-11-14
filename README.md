@@ -4,7 +4,7 @@ Slay the Spire 2 mod that lets you curate a custom **Refined** card pool from th
 
 ## Requirements
 
-- Slay the Spire 2 (0.107.1+)
+- Slay the Spire 2 (0.113.0+)
 
 ## Build
 
@@ -80,6 +80,9 @@ On first run after this update, if you had cards saved in the old profile-scoped
 - [ ] Multiplayer: two players ready up with different `refined_pool.json` contents; each still gets their own pool for rewards/transforms, and the run does not desync
 - [ ] Multiplayer: late joiner receives pool snapshots from already-ready peers
 - [ ] Multiplayer: local `refined_pool.json` is unchanged after a session with differently pooled peers
+- [ ] Card Library shows Fool character filter; Refined filter still works alongside it
+- [ ] Blitz with Refined Gem: character card rewards/transforms use refined pool; colorless/prismatic stay vanilla
+- [ ] Blitz Neow: remains single Blitz option (Refined Gem is not forced as a fourth pick)
 - [ ] Room Full of Cheese (Gorge): prefers Common refined cards; if stock is insufficient, broadens to any refined (Uniform)
 - [ ] Infested Automaton Study/Touch Core: prefer Power / 0-cost from refined; broaden to any refined on failure
 - [ ] Future of Potions: prefer mapped rarity+type from refined; broaden then Uniform backup on failure
